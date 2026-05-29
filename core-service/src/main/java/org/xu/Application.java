@@ -13,10 +13,10 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 @EnableAspectJAutoProxy(exposeProxy = true)
 @MapperScan("org.xu.mapper")
 @SpringBootApplication
-public class HmDianPingApplication {
+public class Application {
 
     public static void main(String[] args) {
-        SpringApplication.run(HmDianPingApplication.class, args);
+        SpringApplication.run(Application.class, args);
     }
 
 }
