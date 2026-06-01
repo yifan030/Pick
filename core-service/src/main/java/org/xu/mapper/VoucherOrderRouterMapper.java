@@ -18,7 +18,7 @@ public interface VoucherOrderRouterMapper extends BaseMapper<VoucherOrderRouter>
     
     @Select("SELECT vor.user_id FROM tb_voucher_order_router vor " +
             "JOIN tb_voucher v ON v.id = vor.voucher_id " +
-            "WHERE v.shop_id = #{shopId} AND vor.create_time >= DATE_SUB(NOW(), INTERVAL #{days} DAY) " +
+            "WHERE v.shop_id = #{shopId} AND vor.create_time >= NOW() - INTERVAL '1 day' * #{days}" +
             "GROUP BY vor.user_id ORDER BY COUNT(1) DESC LIMIT #{limit}")
     java.util.List<Long> findTopBuyerUserIdsByShop(@Param("shopId") Long shopId,
                                                   @Param("limit") int limit,

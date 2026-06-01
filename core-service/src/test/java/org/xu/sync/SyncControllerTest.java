@@ -8,7 +8,9 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.xu.dto.ShopSyncDTO;
+import org.xu.mapper.BlogMapper;
 import org.xu.mapper.ShopMapper;
+import org.xu.service.IUserService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,13 +31,17 @@ class SyncControllerTest {
 
     private static final String VALID_TOKEN = "test-token";
     private ShopMapper shopMapper;
+    private BlogMapper blogMapper;
+    private IUserService userService;
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
         shopMapper = mock(ShopMapper.class);
-        var controller = new SyncController(shopMapper);
+        blogMapper = mock(BlogMapper.class);
+        userService = mock(IUserService.class);
+        var controller = new SyncController(shopMapper, blogMapper, userService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .addInterceptors(new InternalTokenInterceptor(VALID_TOKEN))
                 .build();

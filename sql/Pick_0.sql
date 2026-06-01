@@ -7,24 +7,24 @@ USE _0;
 -- -----------------------------------------------------------
 -- Table: tb_blog (探店笔记)
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_blog`;
-CREATE TABLE `tb_blog` (
-    `id`          BIGINT UNSIGNED NOT NULL COMMENT '主键',
-    `shop_id`     BIGINT          NOT NULL COMMENT '商户id',
-    `user_id`     BIGINT UNSIGNED NOT NULL COMMENT '用户id',
-    `title`       VARCHAR(255)    NOT NULL COMMENT '标题',
-    `images`      TEXT            NOT NULL COMMENT '探店的照片，最多9张，多张以","隔开',
-    `content`     TEXT            NOT NULL COMMENT '探店的文字描述',
-    `liked`       INT UNSIGNED    DEFAULT 0   COMMENT '点赞数量',
-    `comments`    INT UNSIGNED    DEFAULT NULL COMMENT '评论数量',
-    `create_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `idx_shop_id` (`shop_id`),
-    INDEX `idx_user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_blog;
+CREATE TABLE tb_blog (
+    id          BIGINT NOT NULL COMMENT '主键',
+    shop_id     BIGINT          NOT NULL COMMENT '商户id',
+    user_id     BIGINT NOT NULL COMMENT '用户id',
+    title       VARCHAR(255)    NOT NULL COMMENT '标题',
+    images      TEXT            NOT NULL COMMENT '探店的照片，最多9张，多张以","隔开',
+    content     TEXT            NOT NULL COMMENT '探店的文字描述',
+    liked       INT    DEFAULT 0   COMMENT '点赞数量',
+    comments    INT    DEFAULT NULL COMMENT '评论数量',
+    create_time TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
+CREATE INDEX idx_shop_id ON tb_blog (shop_id);
+CREATE INDEX idx_user_id ON tb_blog (user_id);
 
-INSERT INTO `tb_blog` VALUES
+INSERT INTO tb_blog VALUES
 (4,4,1987042234935279617,'无尽浪漫的夜晚丨在万花丛中摇晃着红酒杯🍷品战斧牛排🥩','/imgs/blogs/7/14/4771fefb-1a87-4252-816c-9f7ec41ffa4a.jpg,/imgs/blogs/4/10/2f07e3c9-ddce-482d-9ea7-c21450f8d7cd.jpg,/imgs/blogs/2/6/b0756279-65da-4f2d-b62a-33f74b06454a.jpg,/imgs/blogs/10/7/7e97f47d-eb49-4dc9-a583-95faa7aed287.jpg,/imgs/blogs/1/2/4a7b496b-2a08-4af7-aa95-df2c3bd0ef97.jpg,/imgs/blogs/14/3/52b290eb-8b5d-403b-8373-ba0bb856d18e.jpg','生活就是一半烟火·一半诗意<br/>手执烟火谋生活·心怀诗意以谋爱·<br/>当然<br/>\r\n男朋友给不了的浪漫要学会自己给🍒<br/>\n无法重来的一生·尽量快乐.<br/><br/>🏰「小筑里·神秘浪漫花园餐厅」🏰<br/><br/>\n💯这是一家最最最美花园的西餐厅·到处都是花餐桌上是花前台是花  美好无处不在\n品一口葡萄酒，维亚红酒马瑟兰·微醺上头工作的疲惫消失无际·生如此多娇🍃<br/><br/>📍地址:延安路200号(家乐福面)<br/><br/>🚌交通:地铁①号线定安路B口出右转过下通道右转就到啦～<br/><br/>--------------🥣菜品详情🥣---------------<br/><br/>「战斧牛排]<br/>\n超大一块战斧牛排经过火焰的炙烤发出阵阵香，外焦里嫩让人垂涎欲滴，切开牛排的那一刻，牛排的汁水顺势流了出来，分熟的牛排肉质软，简直细嫩到犯规，一刻都等不了要放入嘴里咀嚼～<br/><br/>「奶油培根意面」<br/>太太太好吃了💯<br/>我真的无法形容它的美妙，意面混合奶油香菇的香味真的太太太香了，我真的舔盘了，一丁点美味都不想浪费‼️<br/><br/><br/>「香菜汁烤鲈鱼」<br/>这个酱是辣的 真的绝好吃‼️<br/>鲈鱼本身就很嫩没什么刺，烤过之后外皮酥酥的，鱼肉蘸上酱料根本停不下来啊啊啊啊<br/>能吃辣椒的小伙伴一定要尝尝<br/><br/>非常可 好吃子🍽\n<br/>--------------🍃个人感受🍃---------------<br/><br/>【👩🏻‍🍳服务】<br/>小姐姐特别耐心的给我们介绍彩票 <br/>推荐特色菜品，拍照需要帮忙也是尽心尽力配合，太爱他们了<br/><br/>【🍃环境】<br/>比较有格调的西餐厅 整个餐厅的布局可称得上的万花丛生 有种在人间仙境的感觉🌸<br/>集美食美酒与鲜花为一体的风格店铺 令人向往<br/>烟火皆是生活 人间皆是浪漫<br/>',1,104,'2021-12-28 11:50:01','2025-11-08 06:28:15'),
 (5,1,1987042234935279617,'人均30💰杭州这家港式茶餐厅我疯狂打call‼️','/imgs/blogs/4/7/863cc302-d150-420d-a596-b16e9232a1a6.jpg,/imgs/blogs/11/12/8b37d208-9414-4e78-b065-9199647bb3e3.jpg,/imgs/blogs/4/1/fa74a6d6-3026-4cb7-b0b6-35abb1e52d11.jpg,/imgs/blogs/9/12/ac2ce2fb-0605-4f14-82cc-c962b8c86688.jpg,/imgs/blogs/4/0/26a7cd7e-6320-432c-a0b4-1b7418f45ec7.jpg,/imgs/blogs/15/9/cea51d9b-ac15-49f6-b9f1-9cf81e9b9c85.jpg','又吃到一家好吃的茶餐厅🍴环境是怀旧tvb港风📺边吃边拍照片📷几十种菜品均价都在20+💰可以是很平价了！<br>·<br>店名：九记冰厅(远洋店)<br>地址：杭州市丽水路远洋乐堤港负一楼（溜冰场旁边）<br>·<br>✔️黯然销魂饭（38💰）<br>这碗饭我吹爆！米饭上盖满了甜甜的叉烧 还有两颗溏心蛋🍳每一粒米饭都裹着浓郁的酱汁 光盘了<br>·<br>✔️铜锣湾漏奶华（28💰）<br>黄油吐司烤的脆脆的 上面洒满了可可粉🍫一刀切开 奶盖流心像瀑布一样流出来  满足<br>·<br>✔️神仙一口西多士士（16💰）<br>简简单单却超级好吃！西多士烤的很脆 黄油味浓郁 面包体超级柔软 上面淋了炼乳<br>·<br>✔️怀旧五柳炸蛋饭（28💰）<br>四个鸡蛋炸成蓬松的炸蛋！也太好吃了吧！还有大块鸡排 上淋了酸甜的酱汁 太合我胃口了！！<br>·<br>✔️烧味双拼例牌（66💰）<br>选了烧鹅➕叉烧 他家烧腊品质真的惊艳到我！据说是每日广州发货 到店现烧现卖的黑棕鹅 每口都是正宗的味道！肉质很嫩 皮超级超级酥脆！一口爆油！叉烧肉也一点都不柴 甜甜的很入味 搭配梅子酱很解腻 ！<br>·<br>✔️红烧脆皮乳鸽（18.8💰）<br>乳鸽很大只 这个价格也太划算了吧， 肉质很有嚼劲 脆皮很酥 越吃越香～<br>·<br>✔️大满足小吃拼盘（25💰）<br>翅尖➕咖喱鱼蛋➕蝴蝶虾➕盐酥鸡<br>zui喜欢里面的咖喱鱼！咖喱酱香甜浓郁！鱼蛋很q弹～<br>·<br>✔️港式熊仔丝袜奶茶（19💰）<br>小熊🐻造型的奶茶冰也太可爱了！颜值担当 很地道的丝袜奶茶 茶味特别浓郁～<br>·',2,0,'2021-12-28 12:57:49','2025-11-08 06:28:15'),
 (6,10,1987041610793484289,'杭州周末好去处｜💰50就可以骑马啦🐎','/imgs/blogs/blog1.jpg','杭州周末好去处｜💰50就可以骑马啦🐎',1,0,'2022-01-11 08:05:47','2025-11-08 06:28:09'),
@@ -33,85 +33,86 @@ INSERT INTO `tb_blog` VALUES
 -- -----------------------------------------------------------
 -- Table: tb_blog_comments
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_blog_comments`;
-CREATE TABLE `tb_blog_comments` (
-    `id`          BIGINT UNSIGNED NOT NULL COMMENT '主键',
-    `user_id`     BIGINT UNSIGNED NOT NULL COMMENT '用户id',
-    `blog_id`     BIGINT UNSIGNED NOT NULL COMMENT '探店id',
-    `parent_id`   BIGINT UNSIGNED NOT NULL COMMENT '关联的1级评论id，如果是一级评论，则值为0',
-    `answer_id`   BIGINT UNSIGNED NOT NULL COMMENT '回复的评论id',
-    `content`     VARCHAR(255)    NOT NULL COMMENT '回复的内容',
-    `liked`       INT UNSIGNED    DEFAULT NULL COMMENT '点赞数',
-    `status`      TINYINT UNSIGNED DEFAULT NULL COMMENT '状态，0：正常，1：被举报，2：禁止查看',
-    `create_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_blog_comments;
+CREATE TABLE tb_blog_comments (
+    id          BIGINT NOT NULL COMMENT '主键',
+    user_id     BIGINT NOT NULL COMMENT '用户id',
+    blog_id     BIGINT NOT NULL COMMENT '探店id',
+    parent_id   BIGINT NOT NULL COMMENT '关联的1级评论id，如果是一级评论，则值为0',
+    answer_id   BIGINT NOT NULL COMMENT '回复的评论id',
+    content     VARCHAR(255)    NOT NULL COMMENT '回复的内容',
+    liked       INT    DEFAULT NULL COMMENT '点赞数',
+    status      SMALLINT DEFAULT NULL COMMENT '状态，0：正常，1：被举报，2：禁止查看',
+    create_time TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
 
 -- -----------------------------------------------------------
 -- Table: tb_follow
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_follow`;
-CREATE TABLE `tb_follow` (
-    `id`             BIGINT    NOT NULL COMMENT '主键',
-    `user_id`        BIGINT UNSIGNED NOT NULL COMMENT '用户id',
-    `follow_user_id` BIGINT UNSIGNED NOT NULL COMMENT '关联的用户id',
-    `create_time`    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_follow;
+CREATE TABLE tb_follow (
+    id             BIGINT    NOT NULL COMMENT '主键',
+    user_id        BIGINT NOT NULL COMMENT '用户id',
+    follow_user_id BIGINT NOT NULL COMMENT '关联的用户id',
+    create_time    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id)
+);
 
 -- -----------------------------------------------------------
 -- Table: tb_rollback_failure_log
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_rollback_failure_log`;
-CREATE TABLE `tb_rollback_failure_log` (
-    `id`              BIGINT       NOT NULL COMMENT '主键',
-    `voucher_id`      BIGINT UNSIGNED NOT NULL COMMENT '优惠券id',
-    `user_id`         BIGINT UNSIGNED NOT NULL COMMENT '用户id',
-    `order_id`        BIGINT       DEFAULT NULL COMMENT '订单id',
-    `trace_id`        BIGINT       DEFAULT NULL COMMENT '追踪唯一标识',
-    `detail`          VARCHAR(1024) DEFAULT NULL COMMENT '失败详情',
-    `result_code`     INT          DEFAULT NULL COMMENT 'Lua返回码(BaseCode)',
-    `retry_attempts`  INT          DEFAULT NULL COMMENT '已尝试的重试次数',
-    `source`          VARCHAR(64)  DEFAULT NULL COMMENT '来源组件',
-    `create_time`     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time`     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `idx_voucher_user` (`voucher_id`, `user_id`),
-    INDEX `idx_trace_id` (`trace_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Redis回滚失败日志表';
+DROP TABLE IF EXISTS tb_rollback_failure_log;
+CREATE TABLE tb_rollback_failure_log (
+    id              BIGINT       NOT NULL COMMENT '主键',
+    voucher_id      BIGINT NOT NULL COMMENT '优惠券id',
+    user_id         BIGINT NOT NULL COMMENT '用户id',
+    order_id        BIGINT       DEFAULT NULL COMMENT '订单id',
+    trace_id        BIGINT       DEFAULT NULL COMMENT '追踪唯一标识',
+    detail          VARCHAR(1024) DEFAULT NULL COMMENT '失败详情',
+    result_code     INT          DEFAULT NULL COMMENT 'Lua返回码(BaseCode)',
+    retry_attempts  INT          DEFAULT NULL COMMENT '已尝试的重试次数',
+    source          VARCHAR(64)  DEFAULT NULL COMMENT '来源组件',
+    create_time     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
+COMMENT ON TABLE tb_rollback_failure_log IS 'Redis回滚失败日志表';
+CREATE INDEX idx_voucher_user ON tb_rollback_failure_log (voucher_id, user_id);
+CREATE INDEX idx_trace_id ON tb_rollback_failure_log (trace_id);
 
 -- -----------------------------------------------------------
 -- Table: tb_shop (店铺) — PRD §5.1: 新增 description/tags/recommended_scenes
 --   x→longitude, y→latitude, images→TEXT
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_shop`;
-CREATE TABLE `tb_shop` (
-    `id`                 BIGINT UNSIGNED NOT NULL COMMENT '主键',
-    `name`               VARCHAR(128)    NOT NULL COMMENT '商铺名称',
-    `type_id`            BIGINT UNSIGNED NOT NULL COMMENT '商铺类型的id',
-    `images`             TEXT            NOT NULL COMMENT '商铺图片，多个图片以'',''隔开',
-    `area`               VARCHAR(128)    DEFAULT NULL COMMENT '商圈，例如陆家嘴',
-    `address`            VARCHAR(255)    NOT NULL COMMENT '地址',
-    `longitude`          DOUBLE          NOT NULL COMMENT '经度',
-    `latitude`           DOUBLE          NOT NULL COMMENT '纬度',
-    `avg_price`          BIGINT UNSIGNED DEFAULT NULL COMMENT '均价，取整数',
-    `sold`               INT UNSIGNED    NOT NULL COMMENT '销量',
-    `comments`           INT UNSIGNED    NOT NULL COMMENT '评论数量',
-    `score`              INT UNSIGNED    NOT NULL COMMENT '评分，1~5分，乘10保存，避免小数',
-    `open_hours`         VARCHAR(32)     DEFAULT NULL COMMENT '营业时间，例如 10:00-22:00',
-    `description`        TEXT            COMMENT '店铺详细描述（RAG 核心检索素材）',
-    `tags`               JSON            COMMENT '标签列表，如 ["停车方便","有包厢","适合约会"]',
-    `recommended_scenes` JSON            COMMENT '推荐场景列表，如 ["约会","家庭聚餐","商务宴请"]',
-    `create_time`        TIMESTAMP       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time`        TIMESTAMP       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `idx_type_id` (`type_id`),
-    INDEX `idx_area` (`area`),
-    INDEX `idx_avg_price` (`avg_price`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_shop;
+CREATE TABLE tb_shop (
+    id                 BIGINT NOT NULL COMMENT '主键',
+    name               VARCHAR(128)    NOT NULL COMMENT '商铺名称',
+    type_id            BIGINT NOT NULL COMMENT '商铺类型的id',
+    images             TEXT            NOT NULL COMMENT '商铺图片，多个图片以'',''隔开',
+    area               VARCHAR(128)    DEFAULT NULL COMMENT '商圈，例如陆家嘴',
+    address            VARCHAR(255)    NOT NULL COMMENT '地址',
+    longitude          DOUBLE          NOT NULL COMMENT '经度',
+    latitude           DOUBLE          NOT NULL COMMENT '纬度',
+    avg_price          BIGINT DEFAULT NULL COMMENT '均价，取整数',
+    sold               INT    NOT NULL COMMENT '销量',
+    comments           INT    NOT NULL COMMENT '评论数量',
+    score              INT    NOT NULL COMMENT '评分，1~5分，乘10保存，避免小数',
+    open_hours         VARCHAR(32)     DEFAULT NULL COMMENT '营业时间，例如 10:00-22:00',
+    description        TEXT            COMMENT '店铺详细描述（RAG 核心检索素材）',
+    tags               JSON            COMMENT '标签列表，如 ["停车方便","有包厢","适合约会"]',
+    recommended_scenes JSON            COMMENT '推荐场景列表，如 ["约会","家庭聚餐","商务宴请"]',
+    create_time        TIMESTAMP       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time        TIMESTAMP       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
+CREATE INDEX idx_type_id ON tb_shop (type_id);
+CREATE INDEX idx_area ON tb_shop (area);
+CREATE INDEX idx_avg_price ON tb_shop (avg_price);
 
-INSERT INTO `tb_shop` VALUES
+INSERT INTO tb_shop VALUES
 (1,'103茶餐厅',11,'https://qcloud.dpfile.com/pc/jiclIsCKmOI2arxKN1Uf0Hx3PucIJH8q0QSz-Z8llzcN56-_QiKuOvyio1OOxsRtFoXqu0G3iT2T27qat3WhLVEuLYk00OmSS1IdNpm8K8sG4JN9RIm2mTKcbLtc2o2vfCF2ubeXzk49OsGrXt_KYDCngOyCwZK-s3fqawWswzk.jpg,https://qcloud.dpfile.com/pc/IOf6VX3qaBgFXFVgp75w-KKJmWZjFc8GXDU8g9bQC6YGCpAmG00QbfT4vCCBj7njuzFvxlbkWx5uwqY2qcjixFEuLYk00OmSS1IdNpm8K8sG4JN9RIm2mTKcbLtc2o2vmIU_8ZGOT1OjpJmLxG6urQ.jpg','大关','金华路锦昌文华苑29号',120.149192,30.316078,80,4215,3035,37,'10:00-22:00','地道港式茶餐厅，主打黯然销魂饭、漏奶华等经典港式美食，环境走怀旧TVB港风路线，是杭州人气茶餐厅之一。','[\"停车方便\",\"排队热门\",\"平价实惠\",\"港式风味\"]','[\"朋友聚餐\",\"独自用餐\",\"约会\"]','2021-12-22 10:10:39','2022-01-13 09:32:19'),
 (2,'蔡馬洪涛烤肉·老北京铜锅涮羊肉',13,'https://p0.meituan.net/bbia/c1870d570e73accbc9fee90b48faca41195272.jpg,http://p0.meituan.net/mogu/397e40c28fc87715b3d5435710a9f88d706914.jpg,https://qcloud.dpfile.com/pc/MZTdRDqCZdbPDUO0Hk6lZENRKzpKRF7kavrkEI99OxqBZTzPfIxa5E33gBfGouhFuzFvxlbkWx5uwqY2qcjixFEuLYk00OmSS1IdNpm8K8sG4JN9RIm2mTKcbLtc2o2vmIU_8ZGOT1OjpJmLxG6urQ.jpg','拱宸桥/上塘','上塘路1035号（中国工商银行旁）',120.151505,30.333422,85,2160,1460,46,'11:30-03:00','主打老北京铜锅涮羊肉和烤肉，羊肉鲜嫩无膻味，秘制麻酱蘸料是灵魂。冬天来一锅热气腾腾的涮羊肉最是暖心。','[\"停车方便\",\"有包厢\",\"深夜营业\",\"老北京风味\"]','[\"家庭聚餐\",\"朋友聚餐\",\"冬日暖身\"]','2021-12-22 11:00:13','2022-01-11 08:12:26'),
 (3,'新白鹿餐厅(运河上街店)',17,'https://p0.meituan.net/biztone/694233_1619500156517.jpeg,https://img.meituan.net/msmerchant/876ca8983f7395556eda9ceb064e6bc51840883.png,https://img.meituan.net/msmerchant/86a76ed53c28eff709a36099aefe28b51554088.png','运河上街','台州路2号运河上街购物中心F5',120.151954,30.32497,61,12035,8045,47,'10:30-21:00','杭州知名连锁中餐厅，以高性价比和稳定出品著称。招牌糖醋里脊、西湖醋鱼等地道杭帮菜深入人心，人均60元就能吃得很丰盛。','[\"停车方便\",\"有包厢\",\"排队热门\",\"平价实惠\",\"杭帮菜\"]','[\"家庭聚餐\",\"朋友聚餐\",\"商务宴请\"]','2021-12-22 11:10:05','2022-01-11 08:12:42'),
@@ -130,20 +131,20 @@ INSERT INTO `tb_shop` VALUES
 -- -----------------------------------------------------------
 -- Table: tb_shop_type (分类) — PRD §5.1: 新增 parent_id 构建两级分类树
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_shop_type`;
-CREATE TABLE `tb_shop_type` (
-    `id`          BIGINT UNSIGNED NOT NULL COMMENT '主键',
-    `name`        VARCHAR(32)     DEFAULT NULL COMMENT '类型名称',
-    `icon`        VARCHAR(255)    DEFAULT NULL COMMENT '图标',
-    `sort`        INT UNSIGNED    DEFAULT NULL COMMENT '顺序',
-    `parent_id`   BIGINT          DEFAULT NULL COMMENT '父分类 ID（可空，构建两级分类树）',
-    `create_time` TIMESTAMP       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` TIMESTAMP       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `idx_parent_id` (`parent_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_shop_type;
+CREATE TABLE tb_shop_type (
+    id          BIGINT NOT NULL COMMENT '主键',
+    name        VARCHAR(32)     DEFAULT NULL COMMENT '类型名称',
+    icon        VARCHAR(255)    DEFAULT NULL COMMENT '图标',
+    sort        INT    DEFAULT NULL COMMENT '顺序',
+    parent_id   BIGINT          DEFAULT NULL COMMENT '父分类 ID（可空，构建两级分类树）',
+    create_time TIMESTAMP       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time TIMESTAMP       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
+CREATE INDEX idx_parent_id ON tb_shop_type (parent_id);
 
-INSERT INTO `tb_shop_type` VALUES
+INSERT INTO tb_shop_type VALUES
 -- 一级分类（parent_id IS NULL）
 ( 1, '美食',      '/types/ms.png',    1, NULL, '2021-12-22 12:17:47', '2021-12-23 03:24:31'),
 ( 2, 'KTV',       '/types/KTV.png',   2, NULL, '2021-12-22 12:18:27', '2021-12-23 03:24:31'),
@@ -169,16 +170,16 @@ INSERT INTO `tb_shop_type` VALUES
 -- -----------------------------------------------------------
 -- Table: tb_sign (签到)
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_sign`;
-CREATE TABLE `tb_sign` (
-    `id`        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `user_id`   BIGINT UNSIGNED NOT NULL COMMENT '用户id',
-    `year`      YEAR            NOT NULL COMMENT '签到的年',
-    `month`     TINYINT         NOT NULL COMMENT '签到的月',
-    `date`      DATE            NOT NULL COMMENT '签到的日期',
-    `is_backup` TINYINT UNSIGNED DEFAULT NULL COMMENT '是否补签',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_sign;
+CREATE TABLE tb_sign (
+    id        BIGINT NOT NULL COMMENT '主键',
+    user_id   BIGINT NOT NULL COMMENT '用户id',
+    year      INT            NOT NULL COMMENT '签到的年',
+    month     SMALLINT         NOT NULL COMMENT '签到的月',
+    date      DATE            NOT NULL COMMENT '签到的日期',
+    is_backup SMALLINT DEFAULT NULL COMMENT '是否补签',
+    PRIMARY KEY (id)
+);
 
 -- ============================================================
 -- Sharded Tables (distributed by ShardingSphere)
@@ -188,36 +189,36 @@ CREATE TABLE `tb_sign` (
 -- -----------------------------------------------------------
 -- Table: tb_user_0
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_user_0`;
-CREATE TABLE `tb_user_0` (
-    `id`          BIGINT UNSIGNED NOT NULL COMMENT '主键',
-    `phone`       VARCHAR(11)     NOT NULL COMMENT '手机号码',
-    `password`    VARCHAR(128)    DEFAULT '' COMMENT '密码，加密存储',
-    `nick_name`   VARCHAR(32)     DEFAULT '' COMMENT '昵称，默认是用户id',
-    `icon`        VARCHAR(255)    DEFAULT '' COMMENT '人物头像',
-    `create_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE KEY `uniqe_key_phone` (`phone`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_user_0;
+CREATE TABLE tb_user_0 (
+    id          BIGINT NOT NULL COMMENT '主键',
+    phone       VARCHAR(11)     NOT NULL COMMENT '手机号码',
+    password    VARCHAR(128)    DEFAULT '' COMMENT '密码，加密存储',
+    nick_name   VARCHAR(32)     DEFAULT '' COMMENT '昵称，默认是用户id',
+    icon        VARCHAR(255)    DEFAULT '' COMMENT '人物头像',
+    create_time TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX uniqe_key_phone ON tb_user_0 (phone);
 
 -- -----------------------------------------------------------
 -- Table: tb_user_1
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_user_1`;
-CREATE TABLE `tb_user_1` (
-    `id`          BIGINT UNSIGNED NOT NULL COMMENT '主键',
-    `phone`       VARCHAR(11)     NOT NULL COMMENT '手机号码',
-    `password`    VARCHAR(128)    DEFAULT '' COMMENT '密码，加密存储',
-    `nick_name`   VARCHAR(32)     DEFAULT '' COMMENT '昵称，默认是用户id',
-    `icon`        VARCHAR(255)    DEFAULT '' COMMENT '人物头像',
-    `create_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE KEY `uniqe_key_phone` (`phone`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_user_1;
+CREATE TABLE tb_user_1 (
+    id          BIGINT NOT NULL COMMENT '主键',
+    phone       VARCHAR(11)     NOT NULL COMMENT '手机号码',
+    password    VARCHAR(128)    DEFAULT '' COMMENT '密码，加密存储',
+    nick_name   VARCHAR(32)     DEFAULT '' COMMENT '昵称，默认是用户id',
+    icon        VARCHAR(255)    DEFAULT '' COMMENT '人物头像',
+    create_time TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX uniqe_key_phone ON tb_user_1 (phone);
 
-INSERT INTO `tb_user_1` VALUES
+INSERT INTO tb_user_1 VALUES
 (1987041610793484289, '13686869696', '', '小鱼同学',   '/imgs/blogs/blog1.jpg',     '2025-11-08 06:16:52', '2025-11-08 06:17:40'),
 (1987042234935279617, '13838411438', '', '可可今天不吃肉', '/imgs/icons/kkjtbcr.jpg',  '2025-11-08 06:19:20', '2025-11-08 06:19:55'),
 (1987042505555968001, '13456789001', '', '可爱多',       '/imgs/icons/user5-icon.png','2025-11-08 06:20:25', '2025-11-08 06:20:47');
@@ -225,44 +226,44 @@ INSERT INTO `tb_user_1` VALUES
 -- -----------------------------------------------------------
 -- Table: tb_user_info_0
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_user_info_0`;
-CREATE TABLE `tb_user_info_0` (
-    `id`          BIGINT UNSIGNED NOT NULL COMMENT '主键',
-    `user_id`     BIGINT UNSIGNED NOT NULL COMMENT '主键，用户id',
-    `city`        VARCHAR(64)     DEFAULT '' COMMENT '城市名称',
-    `introduce`   VARCHAR(128)    DEFAULT NULL COMMENT '个人介绍，不要超过128个字符',
-    `fans`        INT UNSIGNED    DEFAULT 0 COMMENT '粉丝数量',
-    `followee`    INT UNSIGNED    DEFAULT 0 COMMENT '关注的人的数量',
-    `gender`      TINYINT UNSIGNED DEFAULT 0 COMMENT '性别，0：男，1：女',
-    `birthday`    DATE            DEFAULT NULL COMMENT '生日',
-    `credits`     INT UNSIGNED    DEFAULT 0 COMMENT '积分',
-    `level`       TINYINT UNSIGNED DEFAULT 0 COMMENT '会员级别，0~9级,0代表未开通会员',
-    `create_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_user_info_0;
+CREATE TABLE tb_user_info_0 (
+    id          BIGINT NOT NULL COMMENT '主键',
+    user_id     BIGINT NOT NULL COMMENT '主键，用户id',
+    city        VARCHAR(64)     DEFAULT '' COMMENT '城市名称',
+    introduce   VARCHAR(128)    DEFAULT NULL COMMENT '个人介绍，不要超过128个字符',
+    fans        INT    DEFAULT 0 COMMENT '粉丝数量',
+    followee    INT    DEFAULT 0 COMMENT '关注的人的数量',
+    gender      SMALLINT DEFAULT 0 COMMENT '性别，0：男，1：女',
+    birthday    DATE            DEFAULT NULL COMMENT '生日',
+    credits     INT    DEFAULT 0 COMMENT '积分',
+    level       SMALLINT DEFAULT 0 COMMENT '会员级别，0~9级,0代表未开通会员',
+    create_time TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
 
 -- -----------------------------------------------------------
 -- Table: tb_user_info_1
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_user_info_1`;
-CREATE TABLE `tb_user_info_1` (
-    `id`          BIGINT UNSIGNED NOT NULL COMMENT '主键',
-    `user_id`     BIGINT UNSIGNED NOT NULL COMMENT '主键，用户id',
-    `city`        VARCHAR(64)     DEFAULT '' COMMENT '城市名称',
-    `introduce`   VARCHAR(128)    DEFAULT NULL COMMENT '个人介绍，不要超过128个字符',
-    `fans`        INT UNSIGNED    DEFAULT 0 COMMENT '粉丝数量',
-    `followee`    INT UNSIGNED    DEFAULT 0 COMMENT '关注的人的数量',
-    `gender`      TINYINT UNSIGNED DEFAULT 0 COMMENT '性别，0：男，1：女',
-    `birthday`    DATE            DEFAULT NULL COMMENT '生日',
-    `credits`     INT UNSIGNED    DEFAULT 0 COMMENT '积分',
-    `level`       TINYINT UNSIGNED DEFAULT 0 COMMENT '会员级别，0~9级,0代表未开通会员',
-    `create_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_user_info_1;
+CREATE TABLE tb_user_info_1 (
+    id          BIGINT NOT NULL COMMENT '主键',
+    user_id     BIGINT NOT NULL COMMENT '主键，用户id',
+    city        VARCHAR(64)     DEFAULT '' COMMENT '城市名称',
+    introduce   VARCHAR(128)    DEFAULT NULL COMMENT '个人介绍，不要超过128个字符',
+    fans        INT    DEFAULT 0 COMMENT '粉丝数量',
+    followee    INT    DEFAULT 0 COMMENT '关注的人的数量',
+    gender      SMALLINT DEFAULT 0 COMMENT '性别，0：男，1：女',
+    birthday    DATE            DEFAULT NULL COMMENT '生日',
+    credits     INT    DEFAULT 0 COMMENT '积分',
+    level       SMALLINT DEFAULT 0 COMMENT '会员级别，0~9级,0代表未开通会员',
+    create_time TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
 
-INSERT INTO `tb_user_info_1` VALUES
+INSERT INTO tb_user_info_1 VALUES
 (1987041610868981762, 1987041610793484289, '', NULL, 0, 0, 0, NULL, 0, 1, '2025-11-08 06:16:52', '2025-11-08 06:16:52'),
 (1987042234943668226, 1987042234935279617, '', NULL, 0, 0, 0, NULL, 0, 1, '2025-11-08 06:19:20', '2025-11-08 06:19:20'),
 (1987042505560162305, 1987042505555968001, '', NULL, 0, 0, 0, NULL, 0, 1, '2025-11-08 06:20:25', '2025-11-08 06:20:25');
@@ -270,223 +271,227 @@ INSERT INTO `tb_user_info_1` VALUES
 -- -----------------------------------------------------------
 -- Table: tb_user_phone_0
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_user_phone_0`;
-CREATE TABLE `tb_user_phone_0` (
-    `id`          BIGINT       NOT NULL COMMENT '主键id',
-    `user_id`     BIGINT       NOT NULL COMMENT '用户id',
-    `phone`       VARCHAR(512) NOT NULL COMMENT '手机号',
-    `create_time` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`),
-    INDEX `phone_idx` (`phone`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户手机表';
+DROP TABLE IF EXISTS tb_user_phone_0;
+CREATE TABLE tb_user_phone_0 (
+    id          BIGINT       NOT NULL COMMENT '主键id',
+    user_id     BIGINT       NOT NULL COMMENT '用户id',
+    phone       VARCHAR(512) NOT NULL COMMENT '手机号',
+    create_time TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
+COMMENT ON TABLE tb_user_phone_0 IS '用户手机表';
+CREATE INDEX phone_idx ON tb_user_phone_0 (phone);
 
-INSERT INTO `tb_user_phone_0` VALUES
+INSERT INTO tb_user_phone_0 VALUES
 (1987042234952056833, 1987042234935279617, '13838411438', '2025-11-08 06:19:20', '2025-11-08 06:19:20'),
 (1987042505568550913, 1987042505555968001, '13456789001', '2025-11-08 06:20:25', '2025-11-08 06:20:25');
 
 -- -----------------------------------------------------------
 -- Table: tb_user_phone_1
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_user_phone_1`;
-CREATE TABLE `tb_user_phone_1` (
-    `id`          BIGINT       NOT NULL COMMENT '主键id',
-    `user_id`     BIGINT       NOT NULL COMMENT '用户id',
-    `phone`       VARCHAR(512) NOT NULL COMMENT '手机号',
-    `create_time` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`),
-    INDEX `phone_idx` (`phone`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户手机表';
+DROP TABLE IF EXISTS tb_user_phone_1;
+CREATE TABLE tb_user_phone_1 (
+    id          BIGINT       NOT NULL COMMENT '主键id',
+    user_id     BIGINT       NOT NULL COMMENT '用户id',
+    phone       VARCHAR(512) NOT NULL COMMENT '手机号',
+    create_time TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
+COMMENT ON TABLE tb_user_phone_1 IS '用户手机表';
+CREATE INDEX phone_idx ON tb_user_phone_1 (phone);
 
 -- -----------------------------------------------------------
 -- Table: tb_voucher_0 (普通券 + 秒杀券)
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_voucher_0`;
-CREATE TABLE `tb_voucher_0` (
-    `id`           BIGINT UNSIGNED NOT NULL COMMENT '主键',
-    `shop_id`      BIGINT UNSIGNED DEFAULT NULL COMMENT '商铺id',
-    `title`        VARCHAR(255)    NOT NULL COMMENT '代金券标题',
-    `sub_title`    VARCHAR(255)    DEFAULT NULL COMMENT '副标题',
-    `rules`        VARCHAR(1024)   DEFAULT NULL COMMENT '使用规则',
-    `pay_value`    BIGINT UNSIGNED NOT NULL COMMENT '支付金额，单位是分。例如200代表2元',
-    `actual_value` BIGINT          NOT NULL COMMENT '抵扣金额，单位是分。例如200代表2元',
-    `type`         TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0,普通券；1,秒杀券',
-    `status`       TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '1,上架; 2,下架; 3,过期',
-    `create_time`  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time`  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_voucher_0;
+CREATE TABLE tb_voucher_0 (
+    id           BIGINT NOT NULL COMMENT '主键',
+    shop_id      BIGINT DEFAULT NULL COMMENT '商铺id',
+    title        VARCHAR(255)    NOT NULL COMMENT '代金券标题',
+    sub_title    VARCHAR(255)    DEFAULT NULL COMMENT '副标题',
+    rules        VARCHAR(1024)   DEFAULT NULL COMMENT '使用规则',
+    pay_value    BIGINT NOT NULL COMMENT '支付金额，单位是分。例如200代表2元',
+    actual_value BIGINT          NOT NULL COMMENT '抵扣金额，单位是分。例如200代表2元',
+    type         SMALLINT NOT NULL DEFAULT 0 COMMENT '0,普通券；1,秒杀券',
+    status       SMALLINT NOT NULL DEFAULT 1 COMMENT '1,上架; 2,下架; 3,过期',
+    create_time  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
 
 -- -----------------------------------------------------------
 -- Table: tb_voucher_1
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_voucher_1`;
-CREATE TABLE `tb_voucher_1` (
-    `id`           BIGINT UNSIGNED NOT NULL COMMENT '主键',
-    `shop_id`      BIGINT UNSIGNED DEFAULT NULL COMMENT '商铺id',
-    `title`        VARCHAR(255)    NOT NULL COMMENT '代金券标题',
-    `sub_title`    VARCHAR(255)    DEFAULT NULL COMMENT '副标题',
-    `rules`        VARCHAR(1024)   DEFAULT NULL COMMENT '使用规则',
-    `pay_value`    BIGINT UNSIGNED NOT NULL COMMENT '支付金额，单位是分。例如200代表2元',
-    `actual_value` BIGINT          NOT NULL COMMENT '抵扣金额，单位是分。例如200代表2元',
-    `type`         TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0,普通券；1,秒杀券',
-    `status`       TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '1,上架; 2,下架; 3,过期',
-    `create_time`  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time`  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_voucher_1;
+CREATE TABLE tb_voucher_1 (
+    id           BIGINT NOT NULL COMMENT '主键',
+    shop_id      BIGINT DEFAULT NULL COMMENT '商铺id',
+    title        VARCHAR(255)    NOT NULL COMMENT '代金券标题',
+    sub_title    VARCHAR(255)    DEFAULT NULL COMMENT '副标题',
+    rules        VARCHAR(1024)   DEFAULT NULL COMMENT '使用规则',
+    pay_value    BIGINT NOT NULL COMMENT '支付金额，单位是分。例如200代表2元',
+    actual_value BIGINT          NOT NULL COMMENT '抵扣金额，单位是分。例如200代表2元',
+    type         SMALLINT NOT NULL DEFAULT 0 COMMENT '0,普通券；1,秒杀券',
+    status       SMALLINT NOT NULL DEFAULT 1 COMMENT '1,上架; 2,下架; 3,过期',
+    create_time  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
 
 -- -----------------------------------------------------------
 -- Table: tb_seckill_voucher_0 (秒杀券库存)
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_seckill_voucher_0`;
-CREATE TABLE `tb_seckill_voucher_0` (
-    `id`             BIGINT       NOT NULL,
-    `voucher_id`     BIGINT UNSIGNED NOT NULL COMMENT '关联的优惠券的id',
-    `init_stock`     INT          NOT NULL COMMENT '初始化的库存',
-    `stock`          INT          NOT NULL COMMENT '库存',
-    `allowed_levels` VARCHAR(512) DEFAULT NULL COMMENT '允许参与的会员等级，逗号分隔，如："1,2,3"',
-    `min_level`      INT          DEFAULT NULL COMMENT '最低会员等级',
-    `create_time`    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `begin_time`     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '生效时间',
-    `end_time`       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '失效时间',
-    `update_time`    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='秒杀优惠券表，与优惠券是一对一关系';
+DROP TABLE IF EXISTS tb_seckill_voucher_0;
+CREATE TABLE tb_seckill_voucher_0 (
+    id             BIGINT       NOT NULL,
+    voucher_id     BIGINT NOT NULL COMMENT '关联的优惠券的id',
+    init_stock     INT          NOT NULL COMMENT '初始化的库存',
+    stock          INT          NOT NULL COMMENT '库存',
+    allowed_levels VARCHAR(512) DEFAULT NULL COMMENT '允许参与的会员等级，逗号分隔，如："1,2,3"',
+    min_level      INT          DEFAULT NULL COMMENT '最低会员等级',
+    create_time    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    begin_time     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '生效时间',
+    end_time       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '失效时间',
+    update_time    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
+COMMENT ON TABLE tb_seckill_voucher_0 IS '秒杀优惠券表，与优惠券是一对一关系';
 
 -- -----------------------------------------------------------
 -- Table: tb_seckill_voucher_1
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_seckill_voucher_1`;
-CREATE TABLE `tb_seckill_voucher_1` (
-    `id`             BIGINT       NOT NULL,
-    `voucher_id`     BIGINT UNSIGNED NOT NULL COMMENT '关联的优惠券的id',
-    `init_stock`     INT          NOT NULL COMMENT '初始化的库存',
-    `stock`          INT          NOT NULL COMMENT '库存',
-    `allowed_levels` VARCHAR(512) DEFAULT NULL COMMENT '允许参与的会员等级，逗号分隔，如："1,2,3"',
-    `min_level`      INT          DEFAULT NULL COMMENT '最低会员等级',
-    `create_time`    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `begin_time`     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '生效时间',
-    `end_time`       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '失效时间',
-    `update_time`    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='秒杀优惠券表，与优惠券是一对一关系';
+DROP TABLE IF EXISTS tb_seckill_voucher_1;
+CREATE TABLE tb_seckill_voucher_1 (
+    id             BIGINT       NOT NULL,
+    voucher_id     BIGINT NOT NULL COMMENT '关联的优惠券的id',
+    init_stock     INT          NOT NULL COMMENT '初始化的库存',
+    stock          INT          NOT NULL COMMENT '库存',
+    allowed_levels VARCHAR(512) DEFAULT NULL COMMENT '允许参与的会员等级，逗号分隔，如："1,2,3"',
+    min_level      INT          DEFAULT NULL COMMENT '最低会员等级',
+    create_time    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    begin_time     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '生效时间',
+    end_time       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '失效时间',
+    update_time    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
+COMMENT ON TABLE tb_seckill_voucher_1 IS '秒杀优惠券表，与优惠券是一对一关系';
 
 -- -----------------------------------------------------------
 -- Table: tb_voucher_order_0
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_voucher_order_0`;
-CREATE TABLE `tb_voucher_order_0` (
-    `id`                    BIGINT       NOT NULL COMMENT '主键',
-    `user_id`               BIGINT UNSIGNED NOT NULL COMMENT '下单的用户id',
-    `voucher_id`            BIGINT UNSIGNED NOT NULL COMMENT '购买的代金券id',
-    `pay_type`              TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '支付方式 1：余额支付；2：支付宝；3：微信',
-    `status`                TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '订单状态，1：正常；2：已取消；',
-    `reconciliation_status` INT          NOT NULL DEFAULT 1 COMMENT '对账状态：1待处理；2异常；3不一致；4一致',
-    `create_time`           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '下单时间',
-    `pay_time`              TIMESTAMP    NULL DEFAULT NULL COMMENT '支付时间',
-    `use_time`              TIMESTAMP    NULL DEFAULT NULL COMMENT '核销时间',
-    `refund_time`           TIMESTAMP    NULL DEFAULT NULL COMMENT '退款时间',
-    `update_time`           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_voucher_order_0;
+CREATE TABLE tb_voucher_order_0 (
+    id                    BIGINT       NOT NULL COMMENT '主键',
+    user_id               BIGINT NOT NULL COMMENT '下单的用户id',
+    voucher_id            BIGINT NOT NULL COMMENT '购买的代金券id',
+    pay_type              SMALLINT NOT NULL DEFAULT 1 COMMENT '支付方式 1：余额支付；2：支付宝；3：微信',
+    status                SMALLINT NOT NULL DEFAULT 1 COMMENT '订单状态，1：正常；2：已取消；',
+    reconciliation_status INT          NOT NULL DEFAULT 1 COMMENT '对账状态：1待处理；2异常；3不一致；4一致',
+    create_time           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '下单时间',
+    pay_time              TIMESTAMP    NULL DEFAULT NULL COMMENT '支付时间',
+    use_time              TIMESTAMP    NULL DEFAULT NULL COMMENT '核销时间',
+    refund_time           TIMESTAMP    NULL DEFAULT NULL COMMENT '退款时间',
+    update_time           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
 
 -- -----------------------------------------------------------
 -- Table: tb_voucher_order_1
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_voucher_order_1`;
-CREATE TABLE `tb_voucher_order_1` (
-    `id`                    BIGINT       NOT NULL COMMENT '主键',
-    `user_id`               BIGINT UNSIGNED NOT NULL COMMENT '下单的用户id',
-    `voucher_id`            BIGINT UNSIGNED NOT NULL COMMENT '购买的代金券id',
-    `pay_type`              TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '支付方式 1：余额支付；2：支付宝；3：微信',
-    `status`                TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '订单状态，1：正常；2：已取消；',
-    `reconciliation_status` INT          NOT NULL DEFAULT 1 COMMENT '对账状态：1待处理；2异常；3不一致；4一致',
-    `create_time`           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '下单时间',
-    `pay_time`              TIMESTAMP    NULL DEFAULT NULL COMMENT '支付时间',
-    `use_time`              TIMESTAMP    NULL DEFAULT NULL COMMENT '核销时间',
-    `refund_time`           TIMESTAMP    NULL DEFAULT NULL COMMENT '退款时间',
-    `update_time`           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_voucher_order_1;
+CREATE TABLE tb_voucher_order_1 (
+    id                    BIGINT       NOT NULL COMMENT '主键',
+    user_id               BIGINT NOT NULL COMMENT '下单的用户id',
+    voucher_id            BIGINT NOT NULL COMMENT '购买的代金券id',
+    pay_type              SMALLINT NOT NULL DEFAULT 1 COMMENT '支付方式 1：余额支付；2：支付宝；3：微信',
+    status                SMALLINT NOT NULL DEFAULT 1 COMMENT '订单状态，1：正常；2：已取消；',
+    reconciliation_status INT          NOT NULL DEFAULT 1 COMMENT '对账状态：1待处理；2异常；3不一致；4一致',
+    create_time           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '下单时间',
+    pay_time              TIMESTAMP    NULL DEFAULT NULL COMMENT '支付时间',
+    use_time              TIMESTAMP    NULL DEFAULT NULL COMMENT '核销时间',
+    refund_time           TIMESTAMP    NULL DEFAULT NULL COMMENT '退款时间',
+    update_time           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
 
 -- -----------------------------------------------------------
 -- Table: tb_voucher_order_router_0
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_voucher_order_router_0`;
-CREATE TABLE `tb_voucher_order_router_0` (
-    `id`          BIGINT       NOT NULL COMMENT '主键',
-    `order_id`    BIGINT       NOT NULL COMMENT '订单id',
-    `user_id`     BIGINT UNSIGNED NOT NULL COMMENT '用户id',
-    `voucher_id`  BIGINT UNSIGNED NOT NULL COMMENT '代金券id',
-    `create_time` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_voucher_order_router_0;
+CREATE TABLE tb_voucher_order_router_0 (
+    id          BIGINT       NOT NULL COMMENT '主键',
+    order_id    BIGINT       NOT NULL COMMENT '订单id',
+    user_id     BIGINT NOT NULL COMMENT '用户id',
+    voucher_id  BIGINT NOT NULL COMMENT '代金券id',
+    create_time TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
 
 -- -----------------------------------------------------------
 -- Table: tb_voucher_order_router_1
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_voucher_order_router_1`;
-CREATE TABLE `tb_voucher_order_router_1` (
-    `id`          BIGINT       NOT NULL COMMENT '主键',
-    `order_id`    BIGINT       NOT NULL COMMENT '订单id',
-    `user_id`     BIGINT UNSIGNED NOT NULL COMMENT '用户id',
-    `voucher_id`  BIGINT UNSIGNED NOT NULL COMMENT '代金券id',
-    `create_time` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_voucher_order_router_1;
+CREATE TABLE tb_voucher_order_router_1 (
+    id          BIGINT       NOT NULL COMMENT '主键',
+    order_id    BIGINT       NOT NULL COMMENT '订单id',
+    user_id     BIGINT NOT NULL COMMENT '用户id',
+    voucher_id  BIGINT NOT NULL COMMENT '代金券id',
+    create_time TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
 
 -- -----------------------------------------------------------
 -- Table: tb_voucher_reconcile_log_0
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_voucher_reconcile_log_0`;
-CREATE TABLE `tb_voucher_reconcile_log_0` (
-    `id`                    BIGINT       NOT NULL COMMENT '主键',
-    `order_id`              BIGINT       NOT NULL COMMENT '订单id',
-    `user_id`               BIGINT UNSIGNED NOT NULL COMMENT '下单的用户id',
-    `voucher_id`            BIGINT UNSIGNED NOT NULL COMMENT '购买的代金券id',
-    `message_id`            VARCHAR(64)  DEFAULT NULL COMMENT 'Kafka消息uuid',
-    `detail`                VARCHAR(1024) DEFAULT NULL COMMENT '差异说明',
-    `before_qty`            INT          DEFAULT NULL COMMENT '改变之前库存数量',
-    `change_qty`            INT          DEFAULT NULL COMMENT '本次改变数量',
-    `after_qty`             INT          DEFAULT NULL COMMENT '改变之后库存数量',
-    `trace_id`              BIGINT       DEFAULT NULL COMMENT '追踪唯一标识',
-    `log_type`              INT          DEFAULT -1 COMMENT '记录类型 -1:扣减 1:恢复',
-    `business_type`         INT          DEFAULT 1 COMMENT '业务类型：1创建订单成功；2创建订单超时；3创建订单失败',
-    `reconciliation_status` INT          NOT NULL DEFAULT 1 COMMENT '对账状态：1待处理；2异常；3不一致；4一致',
-    `create_time`           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time`           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `idx_order_id` (`order_id`),
-    INDEX `idx_message_id` (`message_id`),
-    INDEX `idx_trace_id` (`trace_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_voucher_reconcile_log_0;
+CREATE TABLE tb_voucher_reconcile_log_0 (
+    id                    BIGINT       NOT NULL COMMENT '主键',
+    order_id              BIGINT       NOT NULL COMMENT '订单id',
+    user_id               BIGINT NOT NULL COMMENT '下单的用户id',
+    voucher_id            BIGINT NOT NULL COMMENT '购买的代金券id',
+    message_id            VARCHAR(64)  DEFAULT NULL COMMENT 'Kafka消息uuid',
+    detail                VARCHAR(1024) DEFAULT NULL COMMENT '差异说明',
+    before_qty            INT          DEFAULT NULL COMMENT '改变之前库存数量',
+    change_qty            INT          DEFAULT NULL COMMENT '本次改变数量',
+    after_qty             INT          DEFAULT NULL COMMENT '改变之后库存数量',
+    trace_id              BIGINT       DEFAULT NULL COMMENT '追踪唯一标识',
+    log_type              INT          DEFAULT -1 COMMENT '记录类型 -1:扣减 1:恢复',
+    business_type         INT          DEFAULT 1 COMMENT '业务类型：1创建订单成功；2创建订单超时；3创建订单失败',
+    reconciliation_status INT          NOT NULL DEFAULT 1 COMMENT '对账状态：1待处理；2异常；3不一致；4一致',
+    create_time           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
+CREATE INDEX idx_order_id ON tb_voucher_reconcile_log_0 (order_id);
+CREATE INDEX idx_message_id ON tb_voucher_reconcile_log_0 (message_id);
+CREATE INDEX idx_trace_id ON tb_voucher_reconcile_log_0 (trace_id);
 
 -- -----------------------------------------------------------
 -- Table: tb_voucher_reconcile_log_1
 -- -----------------------------------------------------------
-DROP TABLE IF EXISTS `tb_voucher_reconcile_log_1`;
-CREATE TABLE `tb_voucher_reconcile_log_1` (
-    `id`                    BIGINT       NOT NULL COMMENT '主键',
-    `order_id`              BIGINT       NOT NULL COMMENT '订单id',
-    `user_id`               BIGINT UNSIGNED NOT NULL COMMENT '下单的用户id',
-    `voucher_id`            BIGINT UNSIGNED NOT NULL COMMENT '购买的代金券id',
-    `message_id`            VARCHAR(64)  DEFAULT NULL COMMENT 'Kafka消息uuid',
-    `detail`                VARCHAR(1024) DEFAULT NULL COMMENT '差异说明',
-    `before_qty`            INT          DEFAULT NULL COMMENT '改变之前库存数量',
-    `change_qty`            INT          DEFAULT NULL COMMENT '本次改变数量',
-    `after_qty`             INT          DEFAULT NULL COMMENT '改变之后库存数量',
-    `trace_id`              BIGINT       DEFAULT NULL COMMENT '追踪唯一标识',
-    `log_type`              INT          DEFAULT -1 COMMENT '记录类型 -1:扣减 1:恢复',
-    `business_type`         INT          DEFAULT 1 COMMENT '业务类型：1创建订单成功；2创建订单超时；3创建订单失败',
-    `reconciliation_status` INT          NOT NULL DEFAULT 1 COMMENT '对账状态：1待处理；2异常；3不一致；4一致',
-    `create_time`           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_time`           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE,
-    INDEX `idx_order_id` (`order_id`),
-    INDEX `idx_message_id` (`message_id`),
-    INDEX `idx_trace_id` (`trace_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS tb_voucher_reconcile_log_1;
+CREATE TABLE tb_voucher_reconcile_log_1 (
+    id                    BIGINT       NOT NULL COMMENT '主键',
+    order_id              BIGINT       NOT NULL COMMENT '订单id',
+    user_id               BIGINT NOT NULL COMMENT '下单的用户id',
+    voucher_id            BIGINT NOT NULL COMMENT '购买的代金券id',
+    message_id            VARCHAR(64)  DEFAULT NULL COMMENT 'Kafka消息uuid',
+    detail                VARCHAR(1024) DEFAULT NULL COMMENT '差异说明',
+    before_qty            INT          DEFAULT NULL COMMENT '改变之前库存数量',
+    change_qty            INT          DEFAULT NULL COMMENT '本次改变数量',
+    after_qty             INT          DEFAULT NULL COMMENT '改变之后库存数量',
+    trace_id              BIGINT       DEFAULT NULL COMMENT '追踪唯一标识',
+    log_type              INT          DEFAULT -1 COMMENT '记录类型 -1:扣减 1:恢复',
+    business_type         INT          DEFAULT 1 COMMENT '业务类型：1创建订单成功；2创建订单超时；3创建订单失败',
+    reconciliation_status INT          NOT NULL DEFAULT 1 COMMENT '对账状态：1待处理；2异常；3不一致；4一致',
+    create_time           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time           TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+);
+CREATE INDEX idx_order_id ON tb_voucher_reconcile_log_1 (order_id);
+CREATE INDEX idx_message_id ON tb_voucher_reconcile_log_1 (message_id);
+CREATE INDEX idx_trace_id ON tb_voucher_reconcile_log_1 (trace_id);

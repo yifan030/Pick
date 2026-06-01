@@ -21,7 +21,7 @@ public interface ShopMapper extends BaseMapper<Shop> {
             + "LEFT JOIN tb_shop_type st_sub ON s.type_id = st_sub.id "
             + "LEFT JOIN tb_shop_type st_main ON st_sub.parent_id = st_main.id "
             + "<if test='since != null and since > 0'>"
-            + "WHERE s.update_time >= FROM_UNIXTIME(#{since}/1000) "
+            + "WHERE s.update_time >= TO_TIMESTAMP(#{since}/1000.0)"
             + "</if>"
             + "ORDER BY s.id"
             + "</script>")
