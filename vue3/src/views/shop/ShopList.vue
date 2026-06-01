@@ -101,8 +101,8 @@ const params = ref({
   typeId: 0,
   current: 1,
   sortBy: '',
-  x: 120.149993,
-  y: 30.334229
+  longitude: 120.149993,
+  latitude: 30.334229
 })
 
 // 获取店铺类型列表

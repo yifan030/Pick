@@ -57,12 +57,12 @@ public class Shop implements Serializable {
     /**
      * 经度
      */
-    private Double x;
+    private Double longitude;
 
     /**
-     * 维度
+     * 纬度
      */
-    private Double y;
+    private Double latitude;
 
     /**
      * 均价，取整数
@@ -88,6 +88,21 @@ public class Shop implements Serializable {
      * 营业时间，例如 10:00-22:00
      */
     private String openHours;
+
+    /**
+     * 店铺详细描述（RAG 核心检索素材）
+     */
+    private String description;
+
+    /**
+     * 标签列表，如 ["停车方便","有包厢","适合约会"]
+     */
+    private String tags;
+
+    /**
+     * 推荐场景列表，如 ["约会","家庭聚餐","商务宴请"]
+     */
+    private String recommendedScenes;
 
     /**
      * 创建时间

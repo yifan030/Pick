@@ -45,6 +45,11 @@ public class ShopType implements Serializable {
     private Integer sort;
 
     /**
+     * 父分类 ID（可空，构建两级分类树）
+     */
+    private Long parentId;
+
+    /**
      * 创建时间
      */
     @JsonIgnore

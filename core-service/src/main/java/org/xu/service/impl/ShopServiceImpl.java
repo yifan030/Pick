@@ -175,12 +175,12 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     }
 
     @Override
-    public Result queryShopByType(Integer typeId, Integer current, Double x, Double y) {
+    public Result queryShopByType(Integer typeId, Integer current, Double longitude, Double latitude) {
         // 1.判断是否需要根据坐标查询
-        //TODO 先改成 x 和 y 都是空
-        x = null;
-        y = null;
-        if (x == null || y == null) {
+        //TODO 先改成 longitude 和 latitude 都是空
+        longitude = null;
+        latitude = null;
+        if (longitude == null || latitude == null) {
             // 不需要坐标查询，按数据库查询
             Page<Shop> page = query()
                     .eq("type_id", typeId)
@@ -195,10 +195,10 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
         // 3.查询redis、按照距离排序、分页。结果：shopId、distance
         String key = SHOP_GEO_KEY + typeId;
-        GeoResults<RedisGeoCommands.GeoLocation<String>> results = stringRedisTemplate.opsForGeo() // GEOSEARCH key BYLONLAT x y BYRADIUS 10 WITHDISTANCE
+        GeoResults<RedisGeoCommands.GeoLocation<String>> results = stringRedisTemplate.opsForGeo() // GEOSEARCH key BYLONLAT longitude latitude BYRADIUS 10 WITHDISTANCE
                 .search(
                         key,
-                        GeoReference.fromCoordinate(x, y),
+                        GeoReference.fromCoordinate(longitude, latitude),
                         new Distance(5000),
                         RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs().includeDistance().limit(end)
                 );
