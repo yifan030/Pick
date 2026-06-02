@@ -14,7 +14,7 @@ public interface BlogMapper extends BaseMapper<Blog> {
             + " b.title, b.content, b.update_time AS updateTime "
             + "FROM tb_blog b "
             + "<if test='since != null and since > 0'>"
-            + "WHERE b.update_time &gt;= TO_TIMESTAMP(#{since}/1000.0)"
+            + "WHERE b.update_time &gt;= FROM_UNIXTIME(#{since}/1000)"
             + "</if>"
             + "ORDER BY b.id"
             + "</script>")
