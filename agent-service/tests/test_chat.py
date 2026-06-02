@@ -1,40 +1,40 @@
+"""Tests for the POST /chat SSE streaming endpoint.
+
+Updated for the new create_agent + v2 streaming architecture.
+"""
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from httpx import AsyncClient, ASGITransport
 
-from src.main import app
-from src.agent.config import get_llm_client
+from src.main import app, get_agent
 
 
-def make_mock_chunk(content: str):
+def make_message_chunk(content: str):
+    """Create a mock message chunk in LangChain AIMessageChunk style."""
     chunk = MagicMock()
-    delta = MagicMock()
-    delta.content = content
-    choice = MagicMock()
-    choice.delta = delta
-    chunk.choices = [choice]
+    chunk.content = content
     return chunk
 
 
-class AsyncIter:
-    def __init__(self, items):
-        self._items = list(items)
+def mock_agent_stream(*text_chunks: str, custom_events: list | None = None):
+    """Create a mock agent whose astream() yields v2-format chunks.
 
-    def __aiter__(self):
-        return self
+    Yields messages chunks (token-level) and optional custom events.
+    """
+    mock = MagicMock()
 
-    async def __anext__(self):
-        if not self._items:
-            raise StopAsyncIteration
-        return self._items.pop(0)
+    async def _astream(input_data, config=None, stream_mode=None, version=None):
+        # Yield text chunks as "messages" type events
+        for text in text_chunks:
+            yield {"type": "messages", "data": (make_message_chunk(text), {})}
+        # Yield custom events if any
+        for event in (custom_events or []):
+            yield {"type": "custom", "data": event}
 
-
-def mock_llm(*chunks: str):
-    mock = AsyncMock()
-    mock.chat.completions.create = AsyncMock(
-        return_value=AsyncIter([make_mock_chunk(c) for c in chunks])
-    )
+    mock.astream = _astream
+    mock.get_state = MagicMock(return_value=None)
     return mock
 
 
@@ -47,7 +47,8 @@ def clean_overrides():
 
 class TestChatEndpoint:
     async def test_post_chat_returns_sse_content_type(self):
-        app.dependency_overrides[get_llm_client] = lambda: mock_llm()
+        """SSE endpoint should return text/event-stream content type."""
+        app.dependency_overrides[get_agent] = lambda: mock_agent_stream()
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -57,7 +58,8 @@ class TestChatEndpoint:
         assert response.headers["content-type"] == "text/event-stream"
 
     async def test_chat_stream_contains_text_events(self):
-        app.dependency_overrides[get_llm_client] = lambda: mock_llm("你好", "世界")
+        """SSE stream should emit text events with the expected content."""
+        app.dependency_overrides[get_agent] = lambda: mock_agent_stream("你好", "世界")
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -76,7 +78,8 @@ class TestChatEndpoint:
         assert len(done_events) == 1
 
     async def test_chat_stream_ends_with_done_event(self):
-        app.dependency_overrides[get_llm_client] = lambda: mock_llm()
+        """Empty response should still terminate with a done event."""
+        app.dependency_overrides[get_agent] = lambda: mock_agent_stream()
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -86,3 +89,36 @@ class TestChatEndpoint:
         data_events = [e for e in events if e.startswith("data:")]
         assert len(data_events) == 1
         assert data_events[0] == 'data: {"type":"done"}'
+
+    async def test_chat_stream_includes_custom_events(self):
+        """Custom events (e.g., shop_card) should be passed through as SSE."""
+        custom = {"type": "shop_card", "data": {"shop_id": 1, "name": "测试店铺"}}
+        app.dependency_overrides[get_agent] = lambda: mock_agent_stream(
+            "推荐如下:", custom_events=[custom]
+        )
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            async with client.stream("POST", "/chat", json={"query": "推荐火锅"}) as response:
+                events = [line async for line in response.aiter_lines()]
+
+        shop_card_events = [
+            e for e in events if e.startswith("data:") and '"type":"shop_card"' in e
+        ]
+        assert len(shop_card_events) == 1
+        assert '"shop_id":1' in shop_card_events[0]
+
+    async def test_chat_with_session_id(self):
+        """Provided session_id should be used and appear in done event."""
+        app.dependency_overrides[get_agent] = lambda: mock_agent_stream("ok")
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            async with client.stream("POST", "/chat", json={
+                "session_id": "my-session-123",
+                "query": "hi",
+            }) as response:
+                events = [line async for line in response.aiter_lines()]
+
+        done_events = [e for e in events if e.startswith("data:") and '"type":"done"' in e]
+        assert len(done_events) == 1
