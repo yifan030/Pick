@@ -34,7 +34,17 @@ public class VoucherOrder implements Serializable {
     private Integer status;
     
     private Integer reconciliationStatus;
-    
+
+    /**
+     * 购买数量
+     */
+    private Integer quantity;
+
+    /**
+     * 实付金额（分）
+     */
+    private Long payAmount;
+
     private LocalDateTime createTime;
     
     private LocalDateTime payTime;
