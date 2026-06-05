@@ -13,6 +13,7 @@ import org.xu.dto.ChatRequestDTO;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
 /**
  * SSE 透明代理：前端 SSE 请求 → 转发 Python /chat → 原始字节流透传到前端。
@@ -65,9 +66,9 @@ public class ChatController {
                 .doOnError(e -> {
                     try {
                         os.write("data: {\"type\":\"error\",\"content\":\"抱歉，服务暂时不可用，请稍后再试\"}\n\n"
-                                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                                .getBytes(StandardCharsets.UTF_8));
                         os.write("data: {\"type\":\"done\"}\n\n"
-                                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                                .getBytes(StandardCharsets.UTF_8));
                         os.flush();
                     } catch (IOException ignored) {
                     }

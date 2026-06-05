@@ -755,14 +755,14 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Long createOrderInternal(Long voucherId, Long userId, int quantity) {
         Voucher voucher = voucherService.getById(voucherId);
         if (voucher == null) {
-            throw new RuntimeException("券不存在");
+            throw new FrameException(BaseCode.VOUCHER_UNAVAILABLE);
         }
         if (voucher.getStock() != null && voucher.getStock() < quantity) {
-            throw new RuntimeException("库存不足");
+            throw new FrameException(BaseCode.SECKILL_VOUCHER_STOCK_INSUFFICIENT);
         }
 
         VoucherOrder order = new VoucherOrder();
@@ -770,9 +770,11 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         order.setId(orderId);
         order.setUserId(userId);
         order.setVoucherId(voucherId);
-        order.setStatus(0);
-        order.setCreateTime(LocalDateTime.now());
-        order.setUpdateTime(LocalDateTime.now());
+        order.setQuantity(quantity);
+        order.setPayAmount(voucher.getPayValue() * quantity);
+        order.setStatus(OrderStatus.NORMAL.getCode());
+        order.setCreateTime(LocalDateTimeUtil.now());
+        order.setUpdateTime(LocalDateTimeUtil.now());
 
         save(order);
 

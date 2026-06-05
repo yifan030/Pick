@@ -18,10 +18,12 @@ import org.xu.model.SeckillVoucherFullModel;
 import org.xu.service.ISeckillVoucherService;
 import org.xu.service.IVoucherService;
 import org.xu.vo.GetSubscribeStatusVo;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -40,9 +42,12 @@ public class VoucherController {
 
     @Resource
     private IVoucherService voucherService;
-    
+
     @Resource
     private ISeckillVoucherService seckillVoucherService;
+
+    @Value("${sync.internal-token}")
+    private String internalToken;
     
     @PostMapping("/get")
     public Result<SeckillVoucherFullModel> get(@Valid @RequestBody GetSeckillVoucherDto getSeckillVoucherDto) {
@@ -108,7 +113,12 @@ public class VoucherController {
 
     @PostMapping("/available-by-shop-ids")
     public Result<Map<String, List<Voucher>>> queryAvailableByShopIds(
-            @RequestBody VoucherAvailableRequestDTO request) {
+            @RequestBody VoucherAvailableRequestDTO request,
+            @RequestHeader(value = "X-Internal-Token", required = false) String internalTokenHeader) {
+        // 内部调用校验 token；前端走 sa-token
+        if (internalTokenHeader != null && !internalToken.equals(internalTokenHeader)) {
+            return Result.fail("Unauthorized");
+        }
         return voucherService.queryAvailableByShopIds(
                 request.getShopIds(), request.getUserId());
     }

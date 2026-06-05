@@ -1,8 +1,11 @@
 package org.xu.controller;
 
 import jakarta.annotation.Resource;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.xu.dto.Result;
 import org.xu.service.IVoucherOrderService;
 
@@ -15,21 +18,10 @@ public class InternalVoucherOrderController {
     @Resource
     private IVoucherOrderService voucherOrderService;
 
-    @Value("${sync.internal-token}")
-    private String internalToken;
-
-    private void checkToken(String token) {
-        if (token == null || !token.equals(internalToken)) {
-            throw new RuntimeException("Unauthorized");
-        }
-    }
-
     @PostMapping("/internal/{voucherId}")
     public Result<Map<String, Object>> internalPlaceOrder(
             @PathVariable Long voucherId,
-            @RequestBody Map<String, Object> body,
-            @RequestHeader("X-Internal-Token") String token) {
-        checkToken(token);
+            @RequestBody Map<String, Object> body) {
 
         Long userId = body.get("user_id") instanceof Number n ? n.longValue() : null;
         int quantity = body.get("quantity") instanceof Number n ? n.intValue() : 1;

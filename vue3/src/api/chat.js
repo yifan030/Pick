@@ -10,7 +10,8 @@ import { consumeSSE } from '@/utils/sse'
 export function sendChatMessage(params, callbacks) {
   return consumeSSE('/api/chat/stream', {
     query: params.query,
-    sessionId: params.sessionId || null,
+    session_id: params.sessionId || null,
+    user_id: params.userId || null,
     longitude: params.longitude || null,
     latitude: params.latitude || null
   }, callbacks)
