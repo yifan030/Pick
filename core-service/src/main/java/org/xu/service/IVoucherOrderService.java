@@ -29,4 +29,9 @@ public interface IVoucherOrderService extends IService<VoucherOrder> {
     boolean autoIssueVoucherToEarliestSubscriber(final Long voucherId, final Long excludeUserId);
     
     Long getSeckillVoucherOrderIdByVoucherId(GetVoucherOrderByVoucherIdDto getVoucherOrderByVoucherIdDto);
+
+    /**
+     * 内部下单（供 Python Agent 调用，不走 seckill 流程）
+     */
+    Long createOrderInternal(Long voucherId, Long userId, int quantity);
 }

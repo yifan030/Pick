@@ -67,6 +67,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
@@ -751,6 +752,36 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private long computeTtlSeconds(final SeckillVoucherFullModel seckillVoucherFullModel) {
         long secondsUntilEnd = Duration.between(LocalDateTimeUtil.now(), seckillVoucherFullModel.getEndTime()).getSeconds();
         return Math.max(1L, secondsUntilEnd + Duration.ofDays(1).getSeconds());
+    }
+
+    @Override
+    @Transactional
+    public Long createOrderInternal(Long voucherId, Long userId, int quantity) {
+        Voucher voucher = voucherService.getById(voucherId);
+        if (voucher == null) {
+            throw new RuntimeException("券不存在");
+        }
+        if (voucher.getStock() != null && voucher.getStock() < quantity) {
+            throw new RuntimeException("库存不足");
+        }
+
+        VoucherOrder order = new VoucherOrder();
+        long orderId = snowflakeIdGenerator.nextId();
+        order.setId(orderId);
+        order.setUserId(userId);
+        order.setVoucherId(voucherId);
+        order.setStatus(0);
+        order.setCreateTime(LocalDateTime.now());
+        order.setUpdateTime(LocalDateTime.now());
+
+        save(order);
+
+        if (voucher.getStock() != null) {
+            voucher.setStock(voucher.getStock() - quantity);
+            voucherService.updateById(voucher);
+        }
+
+        return orderId;
     }
 
     /*

@@ -40,4 +40,10 @@ public interface IVoucherService extends IService<Voucher> {
     List<GetSubscribeStatusVo> getSubscribeStatusBatch(VoucherSubscribeBatchDto voucherSubscribeBatchDto);
     
     void delayVoucherReminder(DelayVoucherReminderDto delayVoucherReminderDto);
+
+    /**
+     * 按 shop_ids 批量查询各店铺的可用优惠券
+     */
+    Result<java.util.Map<String, java.util.List<Voucher>>> queryAvailableByShopIds(
+            java.util.List<Long> shopIds, Long userId);
 }

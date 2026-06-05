@@ -45,7 +45,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -508,7 +510,7 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     
     @Override
     public void delayVoucherReminder(DelayVoucherReminderDto delayVoucherReminderDto) {
-        SeckillVoucher seckillVoucher = seckillVoucherService.lambdaQuery().eq(SeckillVoucher::getVoucherId, 
+        SeckillVoucher seckillVoucher = seckillVoucherService.lambdaQuery().eq(SeckillVoucher::getVoucherId,
                 delayVoucherReminderDto.getVoucherId()).one();
         if (Objects.isNull(seckillVoucher)) {
             throw new FrameException(BaseCode.SECKILL_VOUCHER_NOT_EXIST);
@@ -522,5 +524,36 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
         Integer delaySeconds = delayVoucherReminderDto.getDelaySeconds();
         delayQueueContext.sendMessage(topic, content, delayVoucherReminderDto.getDelaySeconds(), TimeUnit.SECONDS);
         log.info("[测试延迟发送] 已调度提醒消息 voucherId={} delaySeconds={} topic={}", seckillVoucher.getVoucherId(), delaySeconds, topic);
+    }
+
+    @Override
+    public Result<Map<String, List<Voucher>>> queryAvailableByShopIds(List<Long> shopIds, Long userId) {
+        if (shopIds == null || shopIds.isEmpty()) {
+            return Result.ok(Map.of());
+        }
+        Map<String, List<Voucher>> result = new java.util.HashMap<>();
+        for (Long shopId : shopIds) {
+            Result<List<Voucher>> shopResult = queryVoucherOfShop(shopId);
+            if (shopResult.getSuccess() && shopResult.getData() != null) {
+                result.put(shopId.toString(), shopResult.getData());
+            } else {
+                result.put(shopId.toString(), Collections.emptyList());
+            }
+        }
+
+        if (userId != null) {
+            for (Map.Entry<String, List<Voucher>> entry : result.entrySet()) {
+                List<Voucher> filtered = entry.getValue().stream()
+                        .filter(v -> !hasUserReceived(userId, v.getId()))
+                        .toList();
+                entry.setValue(filtered);
+            }
+        }
+
+        return Result.ok(result);
+    }
+
+    private boolean hasUserReceived(Long userId, Long voucherId) {
+        return false; // 简化实现，可后续完善
     }
 }

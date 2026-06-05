@@ -9,6 +9,7 @@ import org.xu.dto.Result;
 import org.xu.dto.SeckillVoucherDto;
 import org.xu.dto.UpdateSeckillVoucherDto;
 import org.xu.dto.UpdateSeckillVoucherStockDto;
+import org.xu.dto.VoucherAvailableRequestDTO;
 import org.xu.dto.VoucherDto;
 import org.xu.dto.VoucherSubscribeBatchDto;
 import org.xu.dto.VoucherSubscribeDto;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -102,5 +104,21 @@ public class VoucherController {
     public Result<Void> delayVoucherReminder(@Valid @RequestBody DelayVoucherReminderDto delayVoucherReminderDto){
         voucherService.delayVoucherReminder(delayVoucherReminderDto);
         return Result.ok();
+    }
+
+    @PostMapping("/available-by-shop-ids")
+    public Result<Map<String, List<Voucher>>> queryAvailableByShopIds(
+            @RequestBody VoucherAvailableRequestDTO request) {
+        return voucherService.queryAvailableByShopIds(
+                request.getShopIds(), request.getUserId());
+    }
+
+    @GetMapping("/{id}")
+    public Result<Voucher> getVoucherById(@PathVariable("id") Long voucherId) {
+        Voucher voucher = voucherService.getById(voucherId);
+        if (voucher == null) {
+            return Result.fail("券不存在");
+        }
+        return Result.ok(voucher);
     }
 }
