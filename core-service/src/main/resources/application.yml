@@ -82,4 +82,7 @@ management:
     metrics:
       export:
         enabled: true
-      
+
+agent-service:
+  url: ${AGENT_SERVICE_URL:http://localhost:8000}
+
