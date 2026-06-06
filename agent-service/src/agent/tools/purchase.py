@@ -87,7 +87,6 @@ def place_order(
     try:
         with _http_client() as client:
             payload = {
-                "voucher_id": voucher_id,
                 "quantity": quantity,
                 "user_id": user_id,
             }

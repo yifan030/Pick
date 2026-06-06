@@ -76,7 +76,7 @@ def query_vouchers(
             return "（优惠券查询暂时不可用）", []
 
         # 格式: {"success": true, "data": {"shop_id": [voucher_list]}, ...}
-        shop_vouchers: dict = result.get("data", {})
+        shop_vouchers = result.get("data") or {}
         if not isinstance(shop_vouchers, dict):
             shop_vouchers = {}
         all_vouchers: list[dict] = []

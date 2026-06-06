@@ -81,4 +81,5 @@ async def stream_agent_response(
         logger.exception("Agent stream error for session=%s", config.get("configurable", {}).get("thread_id"))
         yield _sse({"type": "error", "content": "抱歉，服务暂时不可用，请稍后再试"})
 
-    yield _sse({"type": "done"})
+    session_id = config.get("configurable", {}).get("thread_id", "")
+    yield _sse({"type": "done", "session_id": session_id})

@@ -42,11 +42,8 @@ public class InternalVoucherOrderController {
             return Result.fail("SECKILL_NOT_SUPPORTED:秒杀券暂不支持自动下单，请留意秒杀开始时间手动参与");
         }
 
-        try {
-            Long orderId = voucherOrderService.createOrderInternal(voucherId, userId, quantity);
-            return Result.ok(Map.of("order_id", orderId, "message", "下单成功"));
-        } catch (Exception e) {
-            return Result.fail(e.getMessage());
-        }
+        // FrameException 等业务异常由 WebExceptionAdvice 统一处理
+        Long orderId = voucherOrderService.createOrderInternal(voucherId, userId, quantity);
+        return Result.ok(Map.of("order_id", orderId, "message", "下单成功"));
     }
 }

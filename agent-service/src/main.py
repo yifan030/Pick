@@ -80,8 +80,15 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
     8. 发送 done 事件（携带 session_id）
     """
     session_id = request.session_id or generate_session_id()
-    history = await load_history(session_id)
     config = {"configurable": {"thread_id": session_id}}
+
+    # 避免消息重复：如果 checkpointer 已有该 thread_id 的状态（同进程生命周期内），
+    # 则只用 checkpointer 的历史；否则从 Redis 恢复（进程重启后的恢复）。
+    existing_state = agent.get_state(config)
+    if existing_state and existing_state.values and existing_state.values.get("messages"):
+        history = []  # checkpointer 已有完整上下文，不需要 Redis 历史
+    else:
+        history = await load_history(session_id)
 
     async def _generate():
         async for sse_event in stream_agent_response(
@@ -93,15 +100,7 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
             yield sse_event
 
         # 流结束后，保存消息历史到 Redis
-        try:
-            state = agent.get_state(config)
-            if state and state.values:
-                messages = state.values.get("messages", [])
-                await save_history(session_id, messages)
-        except Exception:
-            logger.exception(
-                "Failed to save history for session=%s", session_id
-            )
+        await _save_history_safe(agent, config, session_id)
 
     return StreamingResponse(
         _generate(),
@@ -134,7 +133,10 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
 
     if not interrupts:
         # 没有中断 → 当作普通消息处理
-        history = await load_history(session_id)
+        if state and state.values and state.values.get("messages"):
+            history = []
+        else:
+            history = await load_history(session_id)
 
         async def _generate():
             async for sse_event in stream_agent_response(
@@ -144,6 +146,9 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
                 config=config,
             ):
                 yield sse_event
+
+            # 流结束后，保存消息历史到 Redis
+            await _save_history_safe(agent, config, session_id)
 
         return StreamingResponse(
             _generate(),
@@ -160,12 +165,11 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
     else:
         command = Command(resume={"confirmed": False, "reason": "unclear"})
 
-    history = await load_history(session_id)
-
+    # 有中断时 checkpointer 已有完整上下文，不需要 Redis 历史
     async def _generate():
         async for sse_event in stream_agent_response(
             query=request.query,
-            history=history,
+            history=[],  # checkpointer 已有完整状态
             agent=agent,
             config=config,
             command=command,
@@ -173,21 +177,26 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
             yield sse_event
 
         # 保存状态
-        try:
-            state = agent.get_state(config)
-            if state and state.values:
-                messages = state.values.get("messages", [])
-                await save_history(session_id, messages)
-        except Exception:
-            logger.exception(
-                "Failed to save history for session=%s", session_id
-            )
+        await _save_history_safe(agent, config, session_id)
 
     return StreamingResponse(
         _generate(),
         media_type="text/event-stream",
         headers={"content-type": "text/event-stream"},
     )
+
+
+async def _save_history_safe(agent, config: dict, session_id: str) -> None:
+    """将当前 agent 状态中的消息持久化到 Redis，失败时仅记录日志."""
+    try:
+        state = agent.get_state(config)
+        if state and state.values:
+            messages = state.values.get("messages", [])
+            await save_history(session_id, messages)
+    except Exception:
+        logger.exception(
+            "Failed to save history for session=%s", session_id
+        )
 
 
 def _error_stream(message: str):
