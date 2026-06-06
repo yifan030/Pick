@@ -59,19 +59,26 @@ def query_vouchers(
 
     try:
         with _http_client() as client:
-            payload: dict = {"shop_ids": shop_ids}
+            payload: dict = {"shopIds": shop_ids}
             if user_id is not None:
-                payload["user_id"] = user_id
+                payload["userId"] = user_id
 
             response = client.post(
-                "/api/voucher/available-by-shop-ids",
+                "/voucher/available-by-shop-ids",
                 json=payload,
             )
             response.raise_for_status()
-            data = response.json()
+            result = response.json()
 
-        # Expected response: {"shop_vouchers": {"shop_id": [voucher_list]}}
-        shop_vouchers: dict = data.get("shop_vouchers", {})
+        # Java Result<T> 包装：{success, errorMsg, data}
+        if isinstance(result, dict) and result.get("success") is False:
+            logger.warning("Voucher query returned error: %s", result.get("errorMsg"))
+            return "（优惠券查询暂时不可用）", []
+
+        # 格式: {"success": true, "data": {"shop_id": [voucher_list]}, ...}
+        shop_vouchers: dict = result.get("data", {})
+        if not isinstance(shop_vouchers, dict):
+            shop_vouchers = {}
         all_vouchers: list[dict] = []
 
         # Format for LLM

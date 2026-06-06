@@ -33,6 +33,17 @@ def _http_client() -> httpx.Client:
     )
 
 
+# ── Helpers ──────────────────────────────────────────────────────────
+
+SECKILL_SENTINEL = "SECKILL_NOT_SUPPORTED"
+SECKILL_MSG = "秒杀券暂不支持自动下单，请留意秒杀开始时间手动参与"
+
+
+def _is_seckill_blocked(error_msg: str | None) -> bool:
+    """检查 Java 返回的错误是否为秒杀券拦截."""
+    return SECKILL_SENTINEL in (error_msg or "")
+
+
 # ── Main Tool ────────────────────────────────────────────────────────
 
 
@@ -67,25 +78,12 @@ def place_order(
         voucher_id, quantity, user_id, shop_name,
     )
 
-    # Check for seckill voucher (先通过查券信息判断)
-    # 如果 Java 返回秒杀券标识，拦截并提示
-    try:
-        with _http_client() as client:
-            # 先查券详情判断是否为秒杀券
-            check_resp = client.get(f"/api/voucher/{voucher_id}")
-            if check_resp.status_code == 200:
-                voucher_info = check_resp.json()
-                if voucher_info.get("is_seckill") or voucher_info.get("type") == "seckill":
-                    return (
-                        f"「{voucher_info.get('title', '该券')}」为秒杀券，不支持自动下单。"
-                        "已为您设置秒杀提醒，请在秒杀开始时手动参与。"
-                    )
+    if quantity < 1:
+        return "购买数量无效，请重新指定。"
+    if quantity > 100:
+        return f"单次最多购买100张，您请求了{quantity}张。"
 
-    except httpx.HTTPError:
-        # 查券详情失败不阻塞，继续下单流程
-        pass
-
-    # 提交订单
+    # 提交订单（秒杀券检测由 Java InternalVoucherOrderController 负责）
     try:
         with _http_client() as client:
             payload = {
@@ -94,14 +92,23 @@ def place_order(
                 "user_id": user_id,
             }
             response = client.post(
-                f"/api/voucher-order/seckill/{voucher_id}",
+                f"/api/voucher-order/internal/{voucher_id}",
                 json=payload,
             )
             response.raise_for_status()
             result = response.json()
 
-        order_id = result.get("order_id", result.get("id", "未知"))
-        message = result.get("message", f"下单成功！订单号：{order_id}")
+        # Java Result<T> 包装：{success, errorMsg, data}
+        if isinstance(result, dict) and result.get("success") is False:
+            error_msg = result.get("errorMsg", result.get("message", ""))
+            if _is_seckill_blocked(error_msg):
+                return SECKILL_MSG
+            return error_msg or "下单失败，请稍后重试。"
+
+        # 成功时 data 字段包含 {order_id, message}
+        order_data = (result.get("data") if isinstance(result, dict) else None) or {}
+        order_id = order_data.get("order_id", order_data.get("id", "未知"))
+        message = order_data.get("message", f"下单成功！订单号：{order_id}")
 
         logger.info("Order placed: order_id=%s voucher_id=%s", order_id, voucher_id)
         return message
@@ -109,6 +116,15 @@ def place_order(
     except httpx.HTTPStatusError as e:
         logger.warning("Order HTTP error: %s response=%s", e, e.response.text if e.response else "")
         status_code = e.response.status_code if e.response else 500
+        # 尝试从响应中提取业务错误信息
+        try:
+            error_data = e.response.json() if e.response else {}
+            error_msg = error_data.get("errorMsg", error_data.get("message", ""))
+            if _is_seckill_blocked(error_msg):
+                return SECKILL_MSG
+        except Exception:
+            pass
+
         if status_code == 409:
             return "库存不足，下单失败。让我为您推荐其他同类优惠券。"
         elif status_code == 403:
