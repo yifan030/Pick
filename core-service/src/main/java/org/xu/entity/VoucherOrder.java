@@ -55,14 +55,4 @@ public class VoucherOrder implements Serializable {
     
     private LocalDateTime updateTime;
 
-    /**
-     * 购买数量
-     */
-    private Integer quantity;
-
-    /**
-     * 实付金额（分）
-     */
-    private Long payAmount;
-
 }
