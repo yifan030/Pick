@@ -14,6 +14,8 @@ const toPage = (i) => {
     router.push('/InfoHtml')
   } else if (i === 1) {
     router.push('/')
+  } else if (i === 3) {
+    router.push('/ai-assistant')
   }
 }
 </script>
@@ -45,7 +47,7 @@ const toPage = (i) => {
       @click="toPage(3)"
     >
       <div class="foot-view"><el-icon><ChatDotRound /></el-icon></div>
-      <div class="foot-text">消息</div>
+      <div class="foot-text">AI导购</div>
     </div>
     <div
       class="foot-box"

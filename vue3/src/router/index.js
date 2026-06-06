@@ -49,6 +49,11 @@ const router = createRouter({
     {
       path: '/shopDetail/:id?',
       component: () => import('@/views/shop/ShopDetail.vue')
+    },
+    {
+      path: '/ai-assistant',
+      name: 'AiAssistant',
+      component: () => import('@/views/chat/ChatView.vue')
     }
   ]
 })

@@ -66,8 +66,12 @@ export function consumeSSE(url, body, callbacks = {}) {
       }
     }
   }).catch((err) => {
-    if (err.name !== 'AbortError') {
-      onError?.('网络连接断开，请点击重试')
+    if (err.name === 'AbortError') return
+    const msg = err.message || ''
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+      onError?.('连接断开，点击重试')
+    } else {
+      onError?.(`服务异常：${msg}`)
     }
   })
 
