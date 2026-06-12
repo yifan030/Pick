@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 from pymilvus import MilvusClient
 
-from milvus import SHOP_DESC
+from src.milvus import SHOP_DESC
 
 BATCH_SIZE = 50
 CONTENT_TYPE = "shop_description"

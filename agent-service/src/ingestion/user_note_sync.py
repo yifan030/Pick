@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 from pymilvus import MilvusClient
 
-from milvus import USER_NOTE
+from src.milvus import USER_NOTE
 
 BATCH_SIZE = 50
 CONTENT_TYPE = "user_note"
