@@ -1,8 +1,11 @@
 <script setup>
 import { ref, nextTick, onBeforeUnmount } from 'vue'
 import { sendChatMessage } from '@/api/chat'
+import { useUserStore } from '@/stores/modules/user'
 import ChatMessage from './ChatMessage.vue'
 import ChatInput from './ChatInput.vue'
+
+const userStore = useUserStore()
 
 // 消息列表: { id, role, content, shopCards, isStreaming }
 const messages = ref([])
@@ -57,6 +60,7 @@ async function handleSend(text) {
     {
       query: text,
       sessionId: sessionId.value,
+      userId: userStore.userInfo?.id || null,
       longitude,
       latitude
     },
@@ -89,8 +93,14 @@ async function handleSend(text) {
 function retryLastMessage() {
   const lastUserMsg = [...messages.value].reverse().find(m => m.role === 'user')
   if (!lastUserMsg) return
-  // 移除最后的 AI 错误消息
-  const lastAiIdx = messages.value.findLastIndex(m => m.role === 'assistant' && m.error)
+  // 移除最后的 AI 错误消息（从后往前找第一个匹配的位置）
+  let lastAiIdx = -1
+  for (let i = messages.value.length - 1; i >= 0; i--) {
+    if (messages.value[i].role === 'assistant' && messages.value[i].error) {
+      lastAiIdx = i
+      break
+    }
+  }
   if (lastAiIdx >= 0) messages.value.splice(lastAiIdx, 1)
   handleSend(lastUserMsg.content)
 }
