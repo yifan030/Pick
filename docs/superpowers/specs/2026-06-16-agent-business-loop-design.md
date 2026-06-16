@@ -43,20 +43,45 @@ src/agent/
 
 ```
 src/agent/
-  agent.py
-  config.py
-  middleware.py
-  stream.py           # 原 chat.py
-  redis_history.py
-  tools/
+  agent.py                    # agent 工厂，thin，只组装
+  config.py                   # 配置收敛
+  prompts/
     __init__.py
-    retrieval.py      # ~80 行
-    voucher.py        # ~60 行
-    purchase.py       # ~70 行
+    system_prompt.py          # SYSTEM_PROMPT 独立，方便迭代时快速定位修改
+  middleware/
+    __init__.py
+    logging.py                # log_before_model + log_after_model
+    safety.py                 # content_safety_filter
+  stream/
+    __init__.py
+    sse.py                    # _sse() 格式化（原 chat.py / stream.py）
+    events.py                 # 事件类型常量
+  memory/
+    __init__.py
+    redis_history.py          # 不变，从 agent/ 根目录迁入
+  tools/
+    __init__.py               # 汇总导出 all_tools，供 agent.py 一行引用
+    recommendation/           # 检索推荐域
+      __init__.py
+      search_shops.py         # 原 retrieval.py 的 @tool 部分
+    commerce/                 # 交易域
+      __init__.py
+      query_vouchers.py       # 原 voucher.py
+      place_order.py          # 原 purchase.py
+      check_orders.py         # 迭代2: check_order_status + list_my_orders
+      request_refund.py       # 迭代2: request_refund
+    social/                   # 社交收藏域
+      __init__.py
+      bookmarks.py            # 迭代3: bookmark_shop + list_bookmarks + remove_bookmark
+      alerts.py               # 迭代3: set_voucher_alert（复用 Java subscribe）
+      reviews.py              # 迭代5: post_review
+    store/                    # 到店域
+      __init__.py
+      reservation.py          # 迭代4: make_reservation + queue_reservation
   services/
     __init__.py
-    milvus.py         # MilvusClient 单例 + 搜索 + filter builder
-    java_client.py    # httpx 客户端单例
+    milvus.py                 # MilvusClient 单例 + 搜索 + filter builder
+    java_client.py            # httpx 客户端单例，统一 base_url + auth + 超时
 ```
 
 **不改**：agent.py、SYSTEM_PROMPT、前端、Java 侧。
@@ -129,7 +154,10 @@ src/agent/
 ## 设计原则
 
 - 每个迭代不积累代码债务
-- tools/ 只放 @tool 函数，services/ 放基础设施
+- `tools/` 按业务域分目录（recommendation / commerce / social / store），每域独立 `__init__` 控制导出
+- `prompts/` 独立于 `agent.py`，修改 System Prompt 时有可读 diff
+- `middleware/` 一个中间件一个文件
+- `stream/` 事件格式集中定义，后续增强事件类型不改散落代码
+- `memory/` 收敛持久化逻辑，当前只有 Redis，未来可扩展
 - 新增 tool 一律使用共享 `java_client`，不复制 HTTP 逻辑
-- SYSTEM_PROMPT 每个迭代按需追加，保持精简
 - 前端在业务闭环阶段不做结构性改动，通过 SSE 事件的字段扩展来传递新信息
