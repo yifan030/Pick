@@ -17,11 +17,11 @@ from langchain.agents.middleware import (
 from langgraph.checkpoint.memory import InMemorySaver
 
 from src.agent.config import get_model
-from src.agent.middleware_new.logging import (
+from src.agent.middleware.logging import (
     log_before_model,
     log_after_model,
 )
-from src.agent.middleware_new.safety import content_safety_filter
+from src.agent.middleware.safety import content_safety_filter
 from src.agent.tools import search_shops, query_vouchers, place_order
 
 from src.agent.prompts import SYSTEM_PROMPT
