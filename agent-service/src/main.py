@@ -9,7 +9,7 @@ from langgraph.types import Command
 from pydantic import BaseModel
 
 from src.agent.agent import create_pick_agent
-from src.agent.chat import stream_agent_response
+from src.agent.stream.sse import _sse, stream_agent_response
 from src.agent.memory.redis_history import (
     generate_session_id,
     load_history,
@@ -202,7 +202,6 @@ async def _save_history_safe(agent, config: dict, session_id: str) -> None:
 def _error_stream(message: str):
     """Helper to return an error SSE stream."""
     async def _gen():
-        from src.agent.chat import _sse
         yield _sse({"type": "error", "content": message})
         yield _sse({"type": "done"})
     return _gen()
