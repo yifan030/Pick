@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from src.agent.agent import create_pick_agent
 from src.agent.chat import stream_agent_response
-from src.agent.redis_history import (
+from src.agent.memory.redis_history import (
     generate_session_id,
     load_history,
     save_history,
