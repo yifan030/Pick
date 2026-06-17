@@ -9,6 +9,7 @@ import org.xu.dto.Result;
 import org.xu.entity.Reservation;
 import org.xu.service.IReservationService;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -22,16 +23,16 @@ public class InternalReservationController {
     public Result<Map<String, Object>> createReservation(@RequestBody Map<String, Object> body) {
         try {
             Reservation reservation = reservationService.createReservation(body);
-            return Result.ok(Map.of(
-                    "reservation_id", reservation.getId(),
-                    "type", reservation.getType(),
-                    "queue_number", reservation.getQueueNumber(),
-                    "guests", reservation.getGuests(),
-                    "status", reservation.getStatus(),
-                    "message", reservation.getType() == 0
-                            ? "排队取号成功"
-                            : "预约已提交，等待确认"
-            ));
+            Map<String, Object> data = new HashMap<>();
+            data.put("reservation_id", reservation.getId());
+            data.put("type", reservation.getType());
+            data.put("queue_number", reservation.getQueueNumber());
+            data.put("guests", reservation.getGuests());
+            data.put("status", reservation.getStatus());
+            data.put("message", reservation.getType() == 0
+                    ? "排队取号成功"
+                    : "预约已提交，等待确认");
+            return Result.ok(data);
         } catch (IllegalArgumentException e) {
             return Result.fail(e.getMessage());
         }
