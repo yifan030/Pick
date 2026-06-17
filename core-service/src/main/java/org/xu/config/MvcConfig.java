@@ -28,7 +28,7 @@ public class MvcConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         // 内部 API 认证拦截器
         registry.addInterceptor(new InternalTokenInterceptor(internalToken))
-                .addPathPatterns("/api/sync/**", "/api/voucher-order/internal/**")
+                .addPathPatterns("/api/sync/**", "/api/voucher-order/internal/**", "/api/orders/internal/**")
                 .order(0);
         // 登录拦截器
         registry.addInterceptor(new LoginInterceptor())
