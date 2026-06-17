@@ -109,7 +109,7 @@ def list_my_orders(user_id: int, status: str | None = None) -> str:
             title = order.get("voucher_title", "未知券")
             amount = order.get("pay_amount", 0)
             create_time = order.get("create_time", "")[:10]
-            status_map = {0: "正常", 1: "已取消", 2: "已使用", 3: "已退款"}
+            status_map = {1: "正常", 2: "已取消", 3: "已退款", 4: "已使用"}
             st = status_map.get(order.get("status"), "未知")
             lines.append(
                 f"{i}. 订单 #{oid} | {title} | "

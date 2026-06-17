@@ -16,7 +16,7 @@ class TestCheckOrderStatus:
             "success": True,
             "data": {
                 "order_id": 123,
-                "status": 0,
+                "status": 1,
                 "status_text": "正常",
                 "voucher_title": "50元代金券",
                 "quantity": 1,
@@ -68,7 +68,7 @@ class TestListMyOrders:
                 {
                     "order_id": 1,
                     "voucher_title": "券A",
-                    "status": 0,
+                    "status": 1,
                     "pay_amount": 3000,
                     "create_time": "2026-06-17T10:00:00",
                 }

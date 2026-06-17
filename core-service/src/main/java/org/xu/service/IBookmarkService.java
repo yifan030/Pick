@@ -14,6 +14,6 @@ public interface IBookmarkService extends IService<Bookmark> {
     /** 列出用户所有收藏，含店铺基本信息 */
     List<Map<String, Object>> listBookmarks(Long userId);
 
-    /** 取消收藏 */
-    void removeBookmark(Long bookmarkId);
+    /** 取消收藏，校验 userId 所有权 */
+    void removeBookmark(Long bookmarkId, Long userId);
 }

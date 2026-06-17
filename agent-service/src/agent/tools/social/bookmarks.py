@@ -96,22 +96,25 @@ def list_bookmarks(user_id: int) -> str:
 
 
 @tool
-def remove_bookmark(bookmark_id: int) -> str:
+def remove_bookmark(bookmark_id: int, user_id: int) -> str:
     """取消收藏指定店铺。
 
     用户可以通过收藏 ID 取消对某店铺的收藏。
 
     Args:
         bookmark_id: 收藏记录 ID（从 list_bookmarks 中获取）
+        user_id: 用户 ID
 
     Returns:
         取消收藏结果文本
     """
-    logger.info("remove_bookmark: bookmark_id=%s", bookmark_id)
+    logger.info("remove_bookmark: bookmark_id=%s user_id=%s", bookmark_id, user_id)
 
     try:
         with get_java_client() as client:
-            response = client.delete(f"/api/bookmarks/internal/{bookmark_id}")
+            response = client.delete(
+                f"/api/bookmarks/internal/{bookmark_id}?user_id={user_id}"
+            )
             response.raise_for_status()
             result = response.json()
 

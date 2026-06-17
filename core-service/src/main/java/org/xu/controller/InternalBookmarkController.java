@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.xu.dto.Result;
 import org.xu.entity.Bookmark;
@@ -44,8 +45,9 @@ public class InternalBookmarkController {
     }
 
     @DeleteMapping("/internal/{bookmarkId}")
-    public Result<Void> removeBookmark(@PathVariable("bookmarkId") Long bookmarkId) {
-        bookmarkService.removeBookmark(bookmarkId);
+    public Result<Void> removeBookmark(@PathVariable("bookmarkId") Long bookmarkId,
+                                       @RequestParam("user_id") Long userId) {
+        bookmarkService.removeBookmark(bookmarkId, userId);
         return Result.ok();
     }
 }

@@ -75,7 +75,11 @@ public class BookmarkServiceImpl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void removeBookmark(Long bookmarkId) {
+    public void removeBookmark(Long bookmarkId, Long userId) {
+        Bookmark bm = getById(bookmarkId);
+        if (bm == null || !bm.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("无权限操作该收藏");
+        }
         removeById(bookmarkId);
     }
 }

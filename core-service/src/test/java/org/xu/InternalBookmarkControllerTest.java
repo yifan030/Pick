@@ -72,10 +72,10 @@ class InternalBookmarkControllerTest {
 
     @Test
     void testRemoveBookmark() throws Exception {
-        mockMvc.perform(delete("/api/bookmarks/internal/1"))
+        mockMvc.perform(delete("/api/bookmarks/internal/1?user_id=100"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(bookmarkService).removeBookmark(1L);
+        verify(bookmarkService).removeBookmark(1L, 100L);
     }
 }

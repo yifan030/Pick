@@ -30,7 +30,7 @@ SYSTEM_PROMPT = """你是一个本地生活智能导购助手，服务于 Pick �
 
 - **list_bookmarks**：查看收藏列表。当用户问"我的收藏"、"收藏了哪些"时调用。参数：user_id（用户 ID）。
 
-- **remove_bookmark**：取消收藏。当用户说"取消收藏"、"去掉这个收藏"时调用。参数：bookmark_id（收藏 ID，从 list_bookmarks 中获取）。
+- **remove_bookmark**：取消收藏。当用户说"取消收藏"、"去掉这个收藏"时调用。参数：bookmark_id（收藏 ID，从 list_bookmarks 中获取）、user_id（用户 ID）。
 
 - **set_voucher_alert**：设置秒杀提醒。当用户说"秒杀时提醒我"、"这个券开抢时通知我"时调用。参数：voucher_id（优惠券 ID）、user_id（用户 ID）。
 

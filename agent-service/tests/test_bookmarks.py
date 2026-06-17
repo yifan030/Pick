@@ -80,6 +80,6 @@ class TestRemoveBookmark:
             mock_client.return_value.__enter__.return_value.delete.return_value = (
                 mock_response
             )
-            result = remove_bookmark.invoke({"bookmark_id": 1})
+            result = remove_bookmark.invoke({"bookmark_id": 1, "user_id": 100})
 
         assert "取消" in result or "移除" in result
