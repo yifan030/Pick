@@ -132,3 +132,29 @@ class TestChatEndpoint:
 
         done_events = [e for e in events if e.startswith("data:") and '"type":"done"' in e]
         assert len(done_events) == 1
+
+    def test_chat_agent_has_order_tools(self):
+        """Agent should include all 6 tools (including new order tools)."""
+        from src.agent.tools import (
+            search_shops,
+            query_vouchers,
+            place_order,
+            check_order_status,
+            list_my_orders,
+            request_refund,
+        )
+        tool_names = {
+            search_shops.name,
+            query_vouchers.name,
+            place_order.name,
+            check_order_status.name,
+            list_my_orders.name,
+            request_refund.name,
+        }
+        assert len(tool_names) == 6
+        assert "check_order_status" in tool_names
+        assert "list_my_orders" in tool_names
+        assert "request_refund" in tool_names
+        assert "search_shops" in tool_names
+        assert "query_vouchers" in tool_names
+        assert "place_order" in tool_names
