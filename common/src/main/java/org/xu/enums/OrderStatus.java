@@ -12,8 +12,12 @@ public enum OrderStatus {
      * 订单状态
      * */
     NORMAL(1, "正常"),
-    
+
     CANCEL(2, "取消"),
+
+    REFUND(3, "已退款"),
+
+    USED(4, "已使用"),
     ;
     
     @Getter
