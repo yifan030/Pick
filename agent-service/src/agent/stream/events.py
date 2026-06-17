@@ -10,3 +10,7 @@ STATUS = "status"
 ORDER_STATUS = "order_status"
 ORDER_LIST = "order_list"
 REFUND_STATUS = "refund_status"
+# Iteration 3: Bookmarks & Alerts
+BOOKMARK_ADDED = "bookmark_added"
+BOOKMARK_REMOVED = "bookmark_removed"
+ALERT_SET = "alert_set"
