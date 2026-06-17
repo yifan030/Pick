@@ -22,14 +22,14 @@ public class InternalOrderController {
     private IVoucherOrderService voucherOrderService;
 
     @GetMapping("/internal/{orderId}")
-    public Result<Map<String, Object>> checkOrderStatus(@PathVariable Long orderId) {
+    public Result<Map<String, Object>> checkOrderStatus(@PathVariable("orderId") Long orderId) {
         Map<String, Object> status = voucherOrderService.getOrderStatus(orderId);
         return Result.ok(status);
     }
 
     @GetMapping("/internal/user/{userId}")
     public Result<List<Map<String, Object>>> listUserOrders(
-            @PathVariable Long userId,
+            @PathVariable("userId") Long userId,
             @RequestParam(name = "status", required = false) String status) {
         List<Map<String, Object>> orders = voucherOrderService.listUserOrders(userId, status);
         return Result.ok(orders);
@@ -37,7 +37,7 @@ public class InternalOrderController {
 
     @PostMapping("/internal/{orderId}/refund")
     public Result<Map<String, Object>> requestRefund(
-            @PathVariable Long orderId,
+            @PathVariable("orderId") Long orderId,
             @RequestBody Map<String, Object> body) {
         String reason = body.get("reason") instanceof String s ? s : "";
         Long refundedOrderId = voucherOrderService.requestRefund(orderId, reason);
