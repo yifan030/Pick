@@ -14,3 +14,7 @@ REFUND_STATUS = "refund_status"
 BOOKMARK_ADDED = "bookmark_added"
 BOOKMARK_REMOVED = "bookmark_removed"
 ALERT_SET = "alert_set"
+# Iteration 4: In-store
+RESERVATION_MADE = "reservation_made"
+QUEUE_JOINED = "queue_joined"
+NAVIGATION_INFO = "navigation_info"
