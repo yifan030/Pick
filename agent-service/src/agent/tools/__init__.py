@@ -13,6 +13,7 @@ from src.agent.tools.commerce.check_orders import check_order_status, list_my_or
 from src.agent.tools.commerce.request_refund import request_refund
 from src.agent.tools.social.bookmarks import bookmark_shop, list_bookmarks, remove_bookmark
 from src.agent.tools.social.alerts import set_voucher_alert
+from src.agent.tools.store.reservation import queue_reservation, make_reservation
 
 __all__ = [
     "search_shops",
@@ -25,4 +26,6 @@ __all__ = [
     "list_bookmarks",
     "remove_bookmark",
     "set_voucher_alert",
+    "queue_reservation",
+    "make_reservation",
 ]

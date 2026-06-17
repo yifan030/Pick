@@ -33,6 +33,8 @@ from src.agent.tools import (
     list_bookmarks,
     remove_bookmark,
     set_voucher_alert,
+    queue_reservation,
+    make_reservation,
 )
 
 from src.agent.prompts import SYSTEM_PROMPT
@@ -60,6 +62,7 @@ def create_pick_agent(
         search_shops, query_vouchers, place_order,
         check_order_status, list_my_orders, request_refund,
         bookmark_shop, list_bookmarks, remove_bookmark, set_voucher_alert,
+        queue_reservation, make_reservation,
     ]
     if tools:
         default_tools.extend(tools)
