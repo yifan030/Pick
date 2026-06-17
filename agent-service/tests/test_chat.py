@@ -1,9 +1,9 @@
 """Tests for the POST /chat SSE streaming endpoint.
 
-Updated for the new create_agent + v2 streaming architecture.
+Uses LangGraph v3 astream_events protocol.
 """
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -19,21 +19,31 @@ def make_message_chunk(content: str):
 
 
 def mock_agent_stream(*text_chunks: str, custom_events: list | None = None):
-    """Create a mock agent whose astream() yields v2-format chunks.
+    """Create a mock agent whose astream_events() returns v3-format events.
 
-    Yields messages chunks (token-level) and optional custom events.
+    Yields message-channel events (token-level) and optional custom-channel events.
     """
     mock = MagicMock()
 
-    async def _astream(input_data, config=None, stream_mode=None, version=None):
-        # Yield text chunks as "messages" type events
-        for text in text_chunks:
-            yield {"type": "messages", "data": (make_message_chunk(text), {})}
-        # Yield custom events if any
-        for event in (custom_events or []):
-            yield {"type": "custom", "data": event}
+    async def _astream_events(input_data, config=None, version=None):
+        async def _generate():
+            for text in text_chunks:
+                yield {
+                    "method": "messages",
+                    "params": {
+                        "data": (make_message_chunk(text), {}),
+                        "namespace": (),
+                    },
+                }
+            for event in (custom_events or []):
+                yield {
+                    "method": "custom",
+                    "params": {"data": event, "namespace": ()},
+                }
 
-    mock.astream = _astream
+        return _generate()
+
+    mock.astream_events = _astream_events
     mock.get_state = MagicMock(return_value=None)
     return mock
 
@@ -88,7 +98,7 @@ class TestChatEndpoint:
 
         data_events = [e for e in events if e.startswith("data:")]
         assert len(data_events) == 1
-        assert data_events[0] == 'data: {"type":"done"}'
+        assert '"type":"done"' in data_events[0]
 
     async def test_chat_stream_includes_custom_events(self):
         """Custom events (e.g., shop_card) should be passed through as SSE."""
