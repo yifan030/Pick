@@ -22,7 +22,14 @@ from src.agent.middleware.logging import (
     log_after_model,
 )
 from src.agent.middleware.safety import content_safety_filter
-from src.agent.tools import search_shops, query_vouchers, place_order
+from src.agent.tools import (
+    search_shops,
+    query_vouchers,
+    place_order,
+    check_order_status,
+    list_my_orders,
+    request_refund,
+)
 
 from src.agent.prompts import SYSTEM_PROMPT
 
@@ -45,7 +52,10 @@ def create_pick_agent(
     checkpointer = InMemorySaver()
 
     # 默认工具
-    default_tools = [search_shops, query_vouchers, place_order]
+    default_tools = [
+        search_shops, query_vouchers, place_order,
+        check_order_status, list_my_orders, request_refund,
+    ]
     if tools:
         default_tools.extend(tools)
 
@@ -56,7 +66,10 @@ def create_pick_agent(
         content_safety_filter,
         ModelRetryMiddleware(max_retries=3),
         ToolRetryMiddleware(max_retries=2),
-        HumanInTheLoopMiddleware(interrupt_on={"place_order": True}),
+        HumanInTheLoopMiddleware(interrupt_on={
+            "place_order": True,
+            "request_refund": True,
+        }),
     ]
     if middleware:
         default_middleware.extend(middleware)
