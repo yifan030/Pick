@@ -32,7 +32,8 @@ public class MvcConfig implements WebMvcConfigurer {
             "/api/sync/**",
             "/api/voucher-order/internal/**",
             "/api/orders/internal/**",
-            "/api/bookmarks/internal/**"
+            "/api/bookmarks/internal/**",
+            "/api/reservations/internal/**"
         )
                 .order(0);
         // 登录拦截器
