@@ -786,6 +786,94 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         return orderId;
     }
 
+    @Override
+    public Map<String, Object> getOrderStatus(Long orderId) {
+        VoucherOrder order = getById(orderId);
+        if (order == null) {
+            throw new FrameException(BaseCode.VOUCHER_ORDER_NOT_EXIST);
+        }
+        Voucher voucher = voucherService.getById(order.getVoucherId());
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("order_id", order.getId());
+        result.put("user_id", order.getUserId());
+        result.put("voucher_id", order.getVoucherId());
+        result.put("status", order.getStatus());
+        result.put("status_text", OrderStatus.getRc(order.getStatus()).getMsg());
+        result.put("quantity", order.getQuantity());
+        result.put("pay_amount", order.getPayAmount());
+        result.put("create_time", order.getCreateTime() != null ? order.getCreateTime().toString() : null);
+        result.put("use_time", order.getUseTime() != null ? order.getUseTime().toString() : null);
+        result.put("refund_time", order.getRefundTime() != null ? order.getRefundTime().toString() : null);
+        if (voucher != null) {
+            result.put("voucher_title", voucher.getTitle());
+            result.put("voucher_pay_value", voucher.getPayValue());
+            result.put("shop_id", voucher.getShopId());
+        }
+        return result;
+    }
+
+    @Override
+    public List<Map<String, Object>> listUserOrders(Long userId, String status) {
+        var query = lambdaQuery().eq(VoucherOrder::getUserId, userId);
+        if (status != null && !status.isBlank()) {
+            Integer statusCode = switch (status.toUpperCase()) {
+                case "NORMAL" -> OrderStatus.NORMAL.getCode();
+                case "CANCEL" -> OrderStatus.CANCEL.getCode();
+                case "REFUND" -> OrderStatus.REFUND.getCode();
+                case "USED" -> OrderStatus.USED.getCode();
+                default -> null;
+            };
+            if (statusCode != null) {
+                query = query.eq(VoucherOrder::getStatus, statusCode);
+            }
+        }
+        query = query.orderByDesc(VoucherOrder::getCreateTime);
+        List<VoucherOrder> orders = query.list();
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (VoucherOrder order : orders) {
+            Map<String, Object> item = new java.util.HashMap<>();
+            item.put("order_id", order.getId());
+            item.put("voucher_id", order.getVoucherId());
+            item.put("status", order.getStatus());
+            item.put("quantity", order.getQuantity());
+            item.put("pay_amount", order.getPayAmount());
+            item.put("create_time", order.getCreateTime() != null ? order.getCreateTime().toString() : null);
+            Voucher voucher = voucherService.getById(order.getVoucherId());
+            if (voucher != null) {
+                item.put("voucher_title", voucher.getTitle());
+                item.put("shop_id", voucher.getShopId());
+            }
+            result.add(item);
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long requestRefund(Long orderId, String reason) {
+        VoucherOrder order = getById(orderId);
+        if (order == null) {
+            throw new FrameException(BaseCode.VOUCHER_ORDER_NOT_EXIST);
+        }
+        if (!OrderStatus.NORMAL.getCode().equals(order.getStatus())) {
+            throw new FrameException("只有正常状态的订单才能退款");
+        }
+        // 更新订单状态为退款
+        order.setStatus(OrderStatus.REFUND.getCode());
+        order.setRefundTime(LocalDateTimeUtil.now());
+        order.setUpdateTime(LocalDateTimeUtil.now());
+        updateById(order);
+        // 恢复库存
+        Voucher voucher = voucherService.getById(order.getVoucherId());
+        if (voucher != null && voucher.getStock() != null) {
+            voucher.setStock(voucher.getStock() + order.getQuantity());
+            voucherService.updateById(voucher);
+        }
+        log.info("Refund processed: orderId={}, reason={}, userId={}, voucherId={}",
+                orderId, reason, order.getUserId(), order.getVoucherId());
+        return orderId;
+    }
+
     /*
     private BlockingQueue<VoucherOrder> orderTasks = new ArrayBlockingQueue<>(1024 * 1024);
     private class VoucherOrderHandler implements Runnable{
