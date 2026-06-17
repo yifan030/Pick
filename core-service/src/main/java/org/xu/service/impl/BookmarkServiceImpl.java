@@ -63,7 +63,7 @@ public class BookmarkServiceImpl
             Shop shop = shopMapper.selectById(bm.getShopId());
             if (shop != null) {
                 item.put("shop_name", shop.getName());
-                item.put("shop_type", shop.getType());
+                item.put("shop_type", shop.getTypeId());
                 item.put("area", shop.getArea());
                 item.put("avg_price", shop.getAvgPrice());
                 item.put("score", shop.getScore());
