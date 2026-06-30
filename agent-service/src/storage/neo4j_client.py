@@ -121,13 +121,14 @@ class Neo4jClient:
             MATCH (u:User {{user_id: $user_id}})-[:{rel_type}]->(p:{nt})
             WHERE p.confidence >= 0.3
               AND (p.expires_at IS NULL OR p.expires_at > timestamp() / 1000)
-            RETURN p
+            RETURN p, elementId(p) AS element_id
             """
             async with self.driver.session() as session:
                 cursor = await session.run(query, user_id=user_id)
                 async for record in cursor:
                     node = record["p"]
-                    profile = _neo4j_node_to_profile(nt, dict(node))
+                    elem_id = record["element_id"]
+                    profile = _neo4j_node_to_profile(nt, dict(node), element_id=elem_id)
                     if profile:
                         results.append(profile)
         return results
@@ -162,12 +163,12 @@ class Neo4jClient:
         query = """
         MATCH (u:User {user_id: $user_id})-[:PREFERS_DIETARY]->(dp:DietaryPreference)
         WHERE dp.confidence >= 0.3
-        RETURN dp
+        RETURN dp, elementId(dp) AS element_id
         """
         async with self.driver.session() as session:
             cursor = await session.run(query, user_id=user_id)
             async for record in cursor:
-                profile = _neo4j_node_to_profile("DietaryPreference", dict(record["dp"]))
+                profile = _neo4j_node_to_profile("DietaryPreference", dict(record["dp"]), element_id=record["element_id"])
                 if profile:
                     results.append(profile)
 
@@ -177,12 +178,12 @@ class Neo4jClient:
             query = f"""
             MATCH (u:User {{user_id: $user_id}})-[:{rel}]->(p:{nt})
             WHERE p.is_hard = true AND p.confidence >= 0.3
-            RETURN p
+            RETURN p, elementId(p) AS element_id
             """
             async with self.driver.session() as session:
                 cursor = await session.run(query, user_id=user_id)
                 async for record in cursor:
-                    profile = _neo4j_node_to_profile(nt, dict(record["p"]))
+                    profile = _neo4j_node_to_profile(nt, dict(record["p"]), element_id=record["element_id"])
                     if profile:
                         results.append(profile)
 
@@ -415,8 +416,60 @@ class Neo4jClient:
                 category_id=category_id,
             )
 
+    # ── Trace → Profiles ───────────────────────────────────────────
+
+    async def get_profiles_by_trace(self, trace_id: str) -> list["ProfileRef"]:
+        """Find all profile atoms linked to the User who performed the given trace.
+
+        Resolves ``trace_id`` → ``EventRef`` → ``User`` → all profile nodes.
+        Returns lightweight ``ProfileRef`` objects with ``.id``, ``.confidence``,
+        and ``.reinforce_count`` attributes.
+
+        Args:
+            trace_id: The event/trace ID (maps to EventRef.event_id).
+
+        Returns:
+            List of ProfileRef objects (empty if trace cannot be resolved).
+        """
+        rel_types = list(RELATIONSHIP_MAP.values())
+        query = """
+        MATCH (er:EventRef {event_id: $trace_id})<-[:PERFORMED]-(u:User)
+        MATCH (u)-[rel]->(p)
+        WHERE type(rel) IN $rel_types
+        RETURN elementId(p) AS id,
+               coalesce(p.confidence, 0.0) AS confidence,
+               coalesce(p.reinforce_count, 0) AS reinforce_count
+        """
+        async with self.driver.session() as session:
+            cursor = await session.run(query, trace_id=trace_id, rel_types=rel_types)
+            results: list[ProfileRef] = []
+            async for record in cursor:
+                results.append(ProfileRef(**dict(record)))
+            return results
+
 
 # ── Internal Helpers ──────────────────────────────────────────────────
+
+
+class ProfileRef:
+    """Lightweight reference to a user profile atom in Neo4j.
+
+    Returned by :meth:`Neo4jClient.get_profiles_by_trace` — carries only
+    the fields needed by FeedbackConsumer.
+    """
+
+    __slots__ = ("id", "confidence", "reinforce_count")
+
+    def __init__(self, id: str, confidence: float = 0.0, reinforce_count: int = 0):
+        self.id = id
+        self.confidence = confidence
+        self.reinforce_count = reinforce_count
+
+    def __repr__(self) -> str:
+        return (
+            f"ProfileRef(id={self.id!r}, confidence={self.confidence}, "
+            f"reinforce_count={self.reinforce_count})"
+        )
 
 
 def _profile_to_neo4j_props(profile: AnyProfile) -> dict:
@@ -444,8 +497,14 @@ def _profile_to_neo4j_props(profile: AnyProfile) -> dict:
     return props
 
 
-def _neo4j_node_to_profile(node_type: str, props: dict) -> AnyProfile | None:
-    """Convert a Neo4j node properties dict to a ProfileAtom instance."""
+def _neo4j_node_to_profile(node_type: str, props: dict, element_id: str = "") -> AnyProfile | None:
+    """Convert a Neo4j node properties dict to a ProfileAtom instance.
+
+    Args:
+        node_type: The Neo4j node label.
+        props: Dict of node properties.
+        element_id: The Neo4j elementId (not a property on the node — passed separately).
+    """
     cls = NODE_TYPE_MAP.get(node_type)
     if cls is None:
         return None
@@ -454,4 +513,7 @@ def _neo4j_node_to_profile(node_type: str, props: dict) -> AnyProfile | None:
     from dataclasses import fields as dc_fields
     valid_keys = {f.name for f in dc_fields(cls)}
     filtered = {k: v for k, v in props.items() if k in valid_keys}
+    # Inject element_id so cleanup/consolidation can delete by elementId
+    if "element_id" in valid_keys and element_id:
+        filtered["element_id"] = element_id
     return cls(**filtered)

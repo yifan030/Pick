@@ -19,6 +19,8 @@ from src.agent.memory.redis_history import (
 from src.memory.pipeline import MemoryPipeline
 from src.retrieval.gateway import RetrievalGateway
 from src.retrieval.prompt_builder import PromptBuilder
+from src.storage.neo4j_client import Neo4jClient
+from src.storage.milvus_store import MilvusMemoryStore
 from src.storage.postgres_saver import PostgresSaverManager
 
 logger = logging.getLogger("pick.main")
@@ -82,6 +84,25 @@ def _trigger_memory_extraction(
 async def lifespan(app: FastAPI):
     """FastAPI lifespan: 启动时初始化所有组件，关闭时清理资源."""
     global _agent, _pipeline, _retrieval_gateway
+    import os
+
+    # ── Storage Clients (Plan A) ──
+    neo4j = Neo4jClient(
+        uri=os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
+        user=os.environ.get("NEO4J_USER", "neo4j"),
+        password=os.environ.get("NEO4J_PASSWORD", "password"),
+    )
+    milvus = MilvusMemoryStore(
+        host=os.environ.get("MILVUS_HOST", "localhost"),
+        port=int(os.environ.get("MILVUS_PORT", "19530")),
+    )
+    try:
+        await neo4j.connect()
+        milvus.connect()
+        milvus.create_all_collections()
+        logger.info("Neo4j + Milvus connected")
+    except Exception:
+        logger.exception("Storage init failed — memory pipeline will be degraded")
 
     # ── PostgresSaver (Plan C) ──
     pg_manager = PostgresSaverManager()
@@ -98,12 +119,13 @@ async def lifespan(app: FastAPI):
     _agent = create_pick_agent(checkpointer=saver)
     logger.info("Agent initialized successfully")
 
-    # ── Retrieval Gateway (Plan C) ──
-    _retrieval_gateway = None  # TODO: wire when Milvus + Neo4j are ready
-
-    # ── Memory Pipeline (Plan B) ──
-    _pipeline = MemoryPipeline(neo4j_client=None, milvus_store=None)
-    logger.info("MemoryPipeline initialized (storage clients pending Plan A)")
+    # ── Retrieval Gateway (Plan C) + Memory Pipeline (Plan B) ──
+    _retrieval_gateway = RetrievalGateway(
+        neo4j_client=neo4j,
+        milvus_store=milvus,
+    )
+    _pipeline = MemoryPipeline(neo4j_client=neo4j, milvus_store=milvus)
+    logger.info("RetrievalGateway + MemoryPipeline initialized")
 
     app.state.pg_manager = pg_manager
     yield
@@ -112,6 +134,10 @@ async def lifespan(app: FastAPI):
         await pg_manager.close()
     except Exception:
         logger.exception("Error closing PostgresSaver")
+    try:
+        await neo4j.close()
+    except Exception:
+        logger.exception("Error closing Neo4j")
     _agent = None
     _pipeline = None
     _retrieval_gateway = None

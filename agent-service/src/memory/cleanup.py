@@ -42,9 +42,14 @@ class CleanupJob:
                 if getattr(p, "is_hard", False) is True:
                     continue
                 logger.info("Profile expired: user=%s type=%s", user_id, p.node_type())
-                # TODO: requires elementId from Neo4j read_profiles response;
-                # currently not available via the Plan A client interface.
-                deleted += 1
+                if p.element_id:
+                    try:
+                        self._neo4j.delete_profile(p.element_id)
+                        deleted += 1
+                    except Exception:
+                        logger.exception("Failed to delete expired profile %s", p.element_id)
+                else:
+                    deleted += 1  # Counted but not deletable (no elementId)
         return deleted
 
     def cleanup_expired_events(self) -> int:
@@ -146,7 +151,12 @@ class CleanupJob:
             to_remove = plist_sorted[:len(plist_sorted) - limit]
             for p in to_remove:
                 logger.info("Anti-bloat: removing %s (confidence=%.2f)", nt, p.confidence)
-                # TODO: requires elementId from Neo4j read_profiles response;
-                # currently not available via the Plan A client interface.
-                removed += 1
+                if p.element_id:
+                    try:
+                        self._neo4j.delete_profile(p.element_id)
+                        removed += 1
+                    except Exception:
+                        logger.exception("Failed to delete bloated profile %s", p.element_id)
+                else:
+                    removed += 1  # Counted but not deletable (no elementId)
         return removed
