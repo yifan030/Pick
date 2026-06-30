@@ -1,7 +1,7 @@
 """FastAPI application for the Pick AI Shopping Guide agent."""
 
+import asyncio
 import logging
-import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
@@ -16,14 +16,16 @@ from src.agent.memory.redis_history import (
     load_history,
     save_history,
 )
+from src.memory.pipeline import MemoryPipeline
 from src.retrieval.gateway import RetrievalGateway
 from src.retrieval.prompt_builder import PromptBuilder
 from src.storage.postgres_saver import PostgresSaverManager
 
 logger = logging.getLogger("pick.main")
 
-# ── Global agent instance (initialized at startup) ──────────────────
+# ── Global instances (initialized at startup) ─────────────────────────
 _agent = None
+_pipeline: MemoryPipeline | None = None
 _retrieval_gateway: RetrievalGateway | None = None
 _prompt_builder = PromptBuilder()
 
@@ -37,46 +39,90 @@ def get_agent():
     return _agent
 
 
-# ── Lifespan ────────────────────────────────────────────────────────
+# ── Memory Extraction (Plan B) ────────────────────────────────────────
+
+
+def _trigger_memory_extraction(
+    user_id: str,
+    session_id: str,
+    user_message: str,
+    assistant_response: str,
+    tool_calls: str = "",
+    round_index: int = 1,
+    recommendations: str = "",
+    user_feedback: str = "",
+):
+    """Schedule memory extraction as a background task (non-blocking)."""
+    if _pipeline is None:
+        logger.warning("MemoryPipeline not initialized, skipping extraction")
+        return
+
+    async def _run():
+        try:
+            await _pipeline.extract_memories(
+                user_id=user_id,
+                session_id=session_id,
+                user_message=user_message,
+                assistant_response=assistant_response,
+                tool_calls=tool_calls,
+                round_index=round_index,
+                recommendations=recommendations,
+                user_feedback=user_feedback,
+            )
+        except Exception:
+            logger.exception("Background memory extraction failed")
+
+    asyncio.create_task(_run())
+
+
+# ── Lifespan ──────────────────────────────────────────────────────────
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """FastAPI lifespan: 启动时初始化agent、PostgresSaver、RetrievalGateway，关闭时清理资源."""
-    global _agent, _retrieval_gateway
+    """FastAPI lifespan: 启动时初始化所有组件，关闭时清理资源."""
+    global _agent, _pipeline, _retrieval_gateway
 
-    # 初始化PostgresSaver
+    # ── PostgresSaver (Plan C) ──
     pg_manager = PostgresSaverManager()
+    saver = None
     try:
         await pg_manager.setup()
         saver = pg_manager.create_saver()
-        logger.info("PostgresSaver初始化成功")
+        logger.info("PostgresSaver initialized")
     except Exception:
-        logger.exception("PostgresSaver初始化失败，降级使用InMemorySaver")
-        saver = None
+        logger.exception("PostgresSaver init failed, falling back to InMemorySaver")
 
+    # ── Agent ──
     logger.info("Initializing Pick AI agent...")
     _agent = create_pick_agent(checkpointer=saver)
+    logger.info("Agent initialized successfully")
 
-    # RetrievalGateway requires milvus_store and neo4j_client
-    # These will be wired when Plan A storage is fully initialized
+    # ── Retrieval Gateway (Plan C) ──
     _retrieval_gateway = None  # TODO: wire when Milvus + Neo4j are ready
 
-    logger.info("Agent initialized successfully")
+    # ── Memory Pipeline (Plan B) ──
+    _pipeline = MemoryPipeline(neo4j_client=None, milvus_store=None)
+    logger.info("MemoryPipeline initialized (storage clients pending Plan A)")
+
     app.state.pg_manager = pg_manager
     yield
     logger.info("Shutting down Pick AI agent...")
-    await pg_manager.close()
+    try:
+        await pg_manager.close()
+    except Exception:
+        logger.exception("Error closing PostgresSaver")
     _agent = None
+    _pipeline = None
     _retrieval_gateway = None
 
 
-# ── FastAPI App ─────────────────────────────────────────────────────
+# ── FastAPI App ───────────────────────────────────────────────────────
 
 app = FastAPI(title="Pick AI Shopping Guide", lifespan=lifespan)
 
 
-# ── Request Schema ──────────────────────────────────────────────────
+# ── Request Schema ────────────────────────────────────────────────────
 
 
 class ChatRequest(BaseModel):
@@ -87,7 +133,29 @@ class ChatRequest(BaseModel):
     latitude: float | None = None
 
 
-# ── Endpoints ───────────────────────────────────────────────────────
+# ── Helpers ────────────────────────────────────────────────────────────
+
+
+async def _save_history_safe(agent, config: dict, session_id: str) -> None:
+    """将当前 agent 状态中的消息持久化到 Redis，失败时仅记录日志."""
+    try:
+        state = agent.get_state(config)
+        if state and state.values:
+            messages = state.values.get("messages", [])
+            await save_history(session_id, messages)
+    except Exception:
+        logger.exception("Failed to save history for session=%s", session_id)
+
+
+def _error_stream(message: str):
+    """Helper to return an error SSE stream."""
+    async def _gen():
+        yield _sse({"type": "error", "content": message})
+        yield _sse({"type": "done"})
+    return _gen()
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────
 
 
 @app.post("/chat")
@@ -97,19 +165,17 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
     流式处理流程：
     1. 生成或复用 session_id
     2. 从 Redis 加载历史消息（checkpointer 降级恢复）
-    3. 新会话时执行记忆检索（语义 + BM25 + 实体增强）
+    3. 新会话时执行记忆检索（Plan C: 语义 + BM25 + 实体增强）
     4. 构建 LangGraph config（thread_id = session_id）
     5. 通过 agent.astream() 流式生成回复
     6. 每个 token 作为 SSE text 事件推送
-    7. 结构化事件（shop_card 等）作为 SSE 自定义事件推送
-    8. checkpointer 自动持久化对话状态
-    9. 发送 done 事件（携带 session_id）
+    7. 流结束后触发记忆提取（Plan B: 后台异步）
+    8. 发送 done 事件（携带 session_id）
     """
-    session_id = request.session_id or uuid.uuid4().hex
+    session_id = request.session_id or generate_session_id()
     config = {"configurable": {"thread_id": session_id}}
 
-    # 避免消息重复：如果 checkpointer 已有该 thread_id 的状态（同进程生命周期内），
-    # 则只用 checkpointer 的历史；否则从 Redis 恢复（进程重启后的恢复）。
+    # 避免消息重复
     existing_state = agent.get_state(config)
     is_new_session = not (existing_state and existing_state.values and existing_state.values.get("messages"))
 
@@ -118,7 +184,7 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
     else:
         history = []
 
-    # 新会话时执行记忆检索
+    # 新会话时执行记忆检索 (Plan C)
     memory_context = ""
     if is_new_session and _retrieval_gateway and request.user_id:
         try:
@@ -132,7 +198,6 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
                 hard_constraints=retrieval_result["hard_constraints"],
                 memories=retrieval_result["memories"],
             )
-            logger.debug("Memory context built: %d chars", len(memory_context))
         except Exception:
             logger.exception("Retrieval failed, continuing without memories")
 
@@ -146,6 +211,17 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
         ):
             yield sse_event
 
+        # 流结束后保存历史到 Redis + 触发记忆提取 (Plan B)
+        await _save_history_safe(agent, config, session_id)
+        if request.user_id:
+            _trigger_memory_extraction(
+                user_id=request.user_id,
+                session_id=session_id,
+                user_message=request.query,
+                assistant_response="",  # TODO: collect from SSE stream
+                round_index=1,           # TODO: track conversation round
+            )
+
     return StreamingResponse(
         _generate(),
         media_type="text/event-stream",
@@ -155,11 +231,7 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
 
 @app.post("/chat/resume")
 async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
-    """恢复被中断的对话（人工确认流程）。
-
-    用于购买确认流程：agent被中断等待用户确认后，
-    用户的"确认"或"取消"响应通过Command恢复执行。
-    """
+    """恢复被中断的对话（人工确认流程）。"""
     session_id = request.session_id
     if not session_id:
         return StreamingResponse(
@@ -175,7 +247,6 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
     interrupts = state.tasks[0].interrupts if state and state.tasks else []
 
     if not interrupts:
-        # 没有中断 → 当作普通消息处理
         if state and state.values and state.values.get("messages"):
             history = []
             is_new = False
@@ -197,7 +268,7 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
                     memories=retrieval_result["memories"],
                 )
             except Exception:
-                logger.exception("Retrieval failed in resume, continuing without memories")
+                logger.exception("Retrieval failed in resume")
 
         async def _generate():
             async for sse_event in stream_agent_response(
@@ -224,11 +295,10 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
     else:
         command = Command(resume={"confirmed": False, "reason": "unclear"})
 
-    # 有中断时 checkpointer 已有完整上下文
     async def _generate():
         async for sse_event in stream_agent_response(
             query=request.query,
-            history=[],  # checkpointer 已有完整状态
+            history=[],
             agent=agent,
             config=config,
             command=command,
@@ -240,14 +310,6 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
         media_type="text/event-stream",
         headers={"content-type": "text/event-stream"},
     )
-
-
-def _error_stream(message: str):
-    """Helper to return an error SSE stream."""
-    async def _gen():
-        yield _sse({"type": "error", "content": message})
-        yield _sse({"type": "done"})
-    return _gen()
 
 
 @app.get("/health")

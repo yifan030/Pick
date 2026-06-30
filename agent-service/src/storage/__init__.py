@@ -1,16 +1,14 @@
-# src/storage/__init__.py
-"""Storage layer for agent memory system.
+"""Storage layer: data models, embedding, and database client interfaces.
 
-Public API:
-- models:     Shared data models (ProfileAtom, MemoryEvent, SessionSummary, AgentCase)
-- Neo4jClient: Profile + Entity graph CRUD
-- MilvusMemoryStore: Event/Session/AgentCase insert + search
-- PostgresSaverManager: LangGraph checkpoint persistence
+These types are used by both Plan B (memory write pipeline) and Plan C (memory read pipeline).
 """
 
 from src.storage.models import (
     # Profile atoms
-    ProfileAtom,
+    ProfileBase,
+    # Events
+    MemoryEvent,
+    # Profile subtypes
     TastePreference,
     DietaryPreference,
     BudgetPreference,
@@ -19,8 +17,7 @@ from src.storage.models import (
     ScenePreference,
     ConstraintPreference,
     AnyProfile,
-    # Memory types
-    MemoryEvent,
+    # Session & Agent Cases
     SessionSummary,
     AgentCase,
     # Delta operations
@@ -35,7 +32,8 @@ from src.storage.models import (
 )
 
 __all__ = [
-    "ProfileAtom",
+    "ProfileBase",
+    "MemoryEvent",
     "TastePreference",
     "DietaryPreference",
     "BudgetPreference",
@@ -44,7 +42,6 @@ __all__ = [
     "ScenePreference",
     "ConstraintPreference",
     "AnyProfile",
-    "MemoryEvent",
     "SessionSummary",
     "AgentCase",
     "DeltaOperation",

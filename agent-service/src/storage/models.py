@@ -1,23 +1,19 @@
-# src/storage/models.py
-"""Shared data models for the agent memory system.
+"""Memory data models for the write pipeline.
 
-These dataclasses are the canonical in-memory representation of all memory
-types. They are used by Plans A, B, and C. Storage backends (Neo4j, Milvus)
-convert to/from these types.
+These dataclasses represent the structured memory types that flow through
+the extraction → filtering → update → audit pipeline.
 
-Profile atoms live in Neo4j as labeled nodes.
-Events, Sessions, and AgentCases live in Milvus as vector-searchable documents.
+All types are defined here so importers only need src.storage.models.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
-import json
 import time
+import uuid
+from dataclasses import dataclass, field
 from typing import Any, Union
 
-
-# ── Delta Operation Constants ─────────────────────────────────────────
+# ── Delta Operation Constants ────────────────────────────────────────────
 
 DELTA_ADD = "ADD"
 DELTA_REINFORCE = "REINFORCE"
@@ -27,272 +23,221 @@ DELTA_MERGE = "MERGE"
 DELTA_NOCHANGE = "NOCHANGE"
 DELTA_EXPIRE = "EXPIRE"
 
-
-# ── Timestamp helper ──────────────────────────────────────────────────
-
-def _now() -> int:
-    return int(time.time())
-
-
-# ── Profile Atoms (Neo4j nodes) ──────────────────────────────────────
-
+# ── Base Profile ─────────────────────────────────────────────────────────
 
 @dataclass
-class ProfileAtom:
-    """Base class for all profile preference atoms.
+class ProfileBase:
+    """Common fields and behaviour for all profile atom types."""
 
-    These are stored as labeled nodes in Neo4j, attached to (:User) nodes
-    via typed relationships (PREFERS_TASTE, PREFERS_CUISINE, etc.).
-    """
-    user_id: str
+    user_id: str = ""
     confidence: float = 0.6
-    source: str = "agent"
-    reinforce_count: int = 0
-    last_reinforced_at: int = 0
-    created_at: int = field(default_factory=_now)
-    updated_at: int = field(default_factory=_now)
-    ttl_seconds: int | None = None
+    created_at: int = field(default_factory=lambda: int(time.time()))
+    updated_at: int = field(default_factory=lambda: int(time.time()))
+    ttl_seconds: int | None = None  # None = permanent
     expires_at: int | None = None
 
+    def __post_init__(self):
+        """Derive expires_at from ttl_seconds when not explicitly set."""
+        if self.ttl_seconds is not None and self.expires_at is None:
+            self.expires_at = int(time.time()) + self.ttl_seconds
+
+    def node_type(self) -> str:
+        """Return the Neo4j-friendly node type name."""
+        return type(self).__name__
+
     def is_expired(self) -> bool:
+        """Check whether this profile atom has passed its TTL."""
         if self.expires_at is None:
             return False
-        return _now() >= self.expires_at
+        return int(time.time()) >= self.expires_at
 
-    def node_type(self) -> str:
-        raise NotImplementedError
+    def is_hard(self) -> bool:
+        """Override in subclasses that represent hard constraints."""
+        return getattr(self, "is_hard", False)
 
+
+# ── Profile Subtypes ─────────────────────────────────────────────────────
 
 @dataclass
-class TastePreference(ProfileAtom):
-    """Taste preference: e.g. spicy→like, sweet→avoid."""
+class TastePreference(ProfileBase):
+    """Taste preference: e.g. spicy=like, sweet=avoid."""
+
     property: str = ""
-    value: str = "like"
-    is_hard: bool = False
-
-    def node_type(self) -> str:
-        return "TastePreference"
+    value: str = ""          # "like" | "avoid"
+    reinforce_count: int = 0
 
 
 @dataclass
-class DietaryPreference(ProfileAtom):
-    """Dietary constraint (hard): halal, vegetarian, allergen, etc.
+class DietaryPreference(ProfileBase):
+    """Dietary hard constraint: e.g. halal, vegetarian, allergen."""
 
-    Hard constraints: never decay, never auto-REVISE, always injected.
-    """
     constraint: str = ""
-    type: str = ""  # "religious" | "health" | "allergy" | "ethical"
+    type: str = ""           # "religious" | "health" | "allergy" | "ethical"
     is_hard: bool = True
-    confidence: float = 1.0   # Hard constraints start at 1.0
-
-    def node_type(self) -> str:
-        return "DietaryPreference"
+    confidence: float = 1.0  # Hard constraints start at max confidence
 
 
 @dataclass
-class BudgetPreference(ProfileAtom):
-    """Budget range preference. Only one per user (latest wins)."""
+class BudgetPreference(ProfileBase):
+    """Budget range: e.g. per_person 50-100 CNY."""
+
     range_min: int = 0
-    range_max: int = 0
+    range_max: int = 9999
     type: str = "per_person"  # "per_person" | "total"
 
-    def node_type(self) -> str:
-        return "BudgetPreference"
-
 
 @dataclass
-class CuisinePreference(ProfileAtom):
-    """Cuisine type preference with weight."""
+class CuisinePreference(ProfileBase):
+    """Cuisine preference: e.g. Sichuan, Cantonese."""
+
     cuisine: str = ""
-    weight: float = 0.5
-
-    def node_type(self) -> str:
-        return "CuisinePreference"
+    weight: float = 0.7
+    reinforce_count: int = 0
 
 
 @dataclass
-class AreaPreference(ProfileAtom):
-    """Area/business district preference."""
+class AreaPreference(ProfileBase):
+    """Area preference: e.g. Chunxi Road, Taikoo Li."""
+
     area: str = ""
-    weight: float = 0.5
-
-    def node_type(self) -> str:
-        return "AreaPreference"
+    weight: float = 0.7
 
 
 @dataclass
-class ScenePreference(ProfileAtom):
-    """Dining scene preference: 约会, 家庭聚餐, 朋友聚餐, etc."""
+class ScenePreference(ProfileBase):
+    """Scene preference: e.g. date, family dinner, business."""
+
     scene: str = ""
-    weight: float = 0.5
-
-    def node_type(self) -> str:
-        return "ScenePreference"
+    weight: float = 0.7
 
 
 @dataclass
-class ConstraintPreference(ProfileAtom):
-    """Soft constraint: "不要辣", "要包间", etc.
+class ConstraintPreference(ProfileBase):
+    """Soft constraint: e.g. "no spicy", "quiet environment"."""
 
-    Unlike DietaryPreference, these participate in decay and can be auto-REVISEd.
-    """
     constraint: str = ""
-    type: str = "taste"
-    is_hard: bool = False
-
-    def node_type(self) -> str:
-        return "ConstraintPreference"
+    type: str = ""
 
 
-# Union type for any profile atom
+# ── Union type ───────────────────────────────────────────────────────────
+
 AnyProfile = Union[
-    TastePreference, DietaryPreference, BudgetPreference,
-    CuisinePreference, AreaPreference, ScenePreference,
+    TastePreference,
+    DietaryPreference,
+    BudgetPreference,
+    CuisinePreference,
+    AreaPreference,
+    ScenePreference,
     ConstraintPreference,
 ]
 
 
-# ── Memory Events (Milvus collection: user_event) ─────────────────────
-
+# ── Memory Event ─────────────────────────────────────────────────────────
 
 @dataclass
 class MemoryEvent:
-    """A single behavioral event extracted from a conversation turn.
+    """A single behavioural event extracted from a conversation turn.
 
-    Stored in Milvus collection `user_event` with dense + sparse embeddings.
+    Events are stored in Milvus collection `user_event` for semantic
+    similarity search by VectorPreFilter.
     """
-    user_id: str
-    event_type: str           # "search" | "purchase" | "reservation" | "view" | "feedback" | "constraint" | "dietary"
-    description: str           # Natural language description (embedding source)
+
+    user_id: str = ""
+    event_type: str = "unknown"
+    description: str = ""
     payload: dict[str, Any] = field(default_factory=dict)
     session_id: str = ""
-    embedding: list[float] | None = None      # Filled by embedder before insert
-    sparse_embedding: dict[int, float] | None = None  # BM25 sparse vector
+    ttl_seconds: int | None = None
     compressed: bool = False
     compressed_from: list[str] = field(default_factory=list)
-    ttl_seconds: int | None = None
+    embedding: list[float] | None = None
+    id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
+    created_at: int = field(default_factory=lambda: int(time.time()))
     expires_at: int | None = None
-    created_at: int = field(default_factory=_now)
 
-    @property
-    def id(self) -> str:
-        """Derive ID from content hash for idempotency."""
-        import hashlib
-        key = f"{self.user_id}:{self.event_type}:{self.created_at}:{self.description[:80]}"
-        return f"evt_{hashlib.md5(key.encode()).hexdigest()[:16]}"
+    def __post_init__(self):
+        """Derive expires_at from ttl_seconds when not explicitly set."""
+        if self.ttl_seconds is not None and self.expires_at is None:
+            self.expires_at = int(time.time()) + self.ttl_seconds
 
-    def to_milvus_dict(self) -> dict:
-        """Convert to dict for Milvus insert, JSON-serializing payload."""
-        d = asdict(self)
-        d["payload"] = json.dumps(self.payload, ensure_ascii=False)
-        d["compressed_from"] = json.dumps(self.compressed_from, ensure_ascii=False)
-        # Remove Python-only fields
-        d.pop("embedding", None)
-        d.pop("sparse_embedding", None)
-        return d
+    def is_expired(self) -> bool:
+        if self.expires_at is None:
+            return False
+        return int(time.time()) >= self.expires_at
 
 
-# ── Session Summaries (Milvus collection: user_session) ───────────────
-
-
-@dataclass
-class SessionSummary:
-    """A conversation session summary stored in Milvus.
-
-    Incrementally updated every 3 turns. Marked complete when session ends.
-    """
-    user_id: str
-    summary: str              # Natural language summary (embedding source)
-    key_shops: list[str] = field(default_factory=list)
-    key_areas: list[str] = field(default_factory=list)
-    intent: str = ""
-    is_complete: bool = False
-    embedding: list[float] | None = None
-    sparse_embedding: dict[int, float] | None = None
-    created_at: int = field(default_factory=_now)
-    updated_at: int = field(default_factory=_now)
-
-    @property
-    def id(self) -> str:
-        import hashlib
-        key = f"{self.user_id}:{self.created_at}"
-        return f"sess_{hashlib.md5(key.encode()).hexdigest()[:16]}"
-
-    def to_milvus_dict(self) -> dict:
-        d = asdict(self)
-        d["key_shops"] = json.dumps(self.key_shops, ensure_ascii=False)
-        d["key_areas"] = json.dumps(self.key_areas, ensure_ascii=False)
-        d.pop("embedding", None)
-        d.pop("sparse_embedding", None)
-        return d
-
-
-# ── Agent Cases (Milvus collection: agent_case) ───────────────────────
-
-
-@dataclass
-class AgentCase:
-    """Agent experience memory — records of past recommendation outcomes."""
-    user_id: str | None       # None = generic pattern
-    case_type: str            # "recommendation" | "purchase_flow" | "error_recovery" | "user_handling"
-    description: str
-    context: dict[str, Any] = field(default_factory=dict)
-    action: str = ""
-    outcome: str = ""         # "success" | "partial" | "failure"
-    outcome_reason: str = ""
-    lesson: str = ""
-    embedding: list[float] | None = None
-    sparse_embedding: dict[int, float] | None = None
-    created_at: int = field(default_factory=_now)
-    ttl_seconds: int | None = 15552000  # 180 days default
-
-    @property
-    def id(self) -> str:
-        import hashlib
-        key = f"{self.user_id or 'global'}:{self.case_type}:{self.created_at}:{self.description[:80]}"
-        return f"case_{hashlib.md5(key.encode()).hexdigest()[:16]}"
-
-    def to_milvus_dict(self) -> dict:
-        d = asdict(self)
-        d["context"] = json.dumps(self.context, ensure_ascii=False)
-        d.pop("embedding", None)
-        d.pop("sparse_embedding", None)
-        return d
-
-
-# ── Delta Operations (for Profile Updater output) ─────────────────────
-
+# ── Delta Operation ──────────────────────────────────────────────────────
 
 @dataclass
 class DeltaOperation:
-    """A single memory delta produced by the Profile Updater."""
-    op: str                   # ADD | REINFORCE | REVISE | DELETE | MERGE | NOCHANGE | EXPIRE
-    target_type: str
+    """A single profile delta computed by ProfileUpdater.
+
+    One of: ADD, REINFORCE, REVISE, DELETE, MERGE, NOCHANGE, EXPIRE.
+    """
+
+    op: str = DELTA_NOCHANGE
+    target_type: str = ""
     target_id: str | None = None
     old_value: AnyProfile | None = None
     new_value: AnyProfile | None = None
     reason: str = ""
 
     def to_audit_dict(self) -> dict:
-        return {
+        """Convert to a dict suitable for AuditLogger JSONL output."""
+        d: dict[str, Any] = {
             "op": self.op,
             "target_type": self.target_type,
             "target_id": self.target_id,
-            "old_value": _profile_to_dict(self.old_value),
-            "new_value": _profile_to_dict(self.new_value),
             "reason": self.reason,
         }
+        if self.old_value is not None:
+            d["old_value"] = {
+                k: v for k, v in self.old_value.__dict__.items()
+                if not k.startswith("_")
+            }
+        if self.new_value is not None:
+            d["new_value"] = {
+                k: v for k, v in self.new_value.__dict__.items()
+                if not k.startswith("_")
+            }
+        return d
 
 
-def _profile_to_dict(p: AnyProfile | None) -> dict | None:
-    if p is None:
-        return None
-    d = asdict(p)
-    # Remove large/unnecessary fields for audit
-    d.pop("created_at", None)
-    d.pop("updated_at", None)
-    return d
+# ── Session Summary ──────────────────────────────────────────────────────
+
+@dataclass
+class SessionSummary:
+    """An incremental or final session summary stored in Milvus."""
+
+    user_id: str = ""
+    summary: str = ""
+    key_shops: list[str] = field(default_factory=list)
+    key_areas: list[str] = field(default_factory=list)
+    intent: str = ""
+    is_complete: bool = False
+    embedding: list[float] | None = None
+    id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
+    created_at: int = field(default_factory=lambda: int(time.time()))
 
 
-# Alias for backward compat
-ProfileDelta = DeltaOperation
+# ── Agent Case ───────────────────────────────────────────────────────────
+
+@dataclass
+class AgentCase:
+    """An agent experience case extracted from a recommendation outcome.
+
+    Stored in Milvus collection `agent_case` with 180-day TTL.
+    """
+
+    user_id: str = ""
+    case_type: str = "recommendation"
+    description: str = ""
+    context: dict[str, Any] = field(default_factory=dict)
+    action: str = ""
+    outcome: str = "unknown"  # "success" | "failure" | "ignored" | "rejected"
+    outcome_reason: str = ""
+    lesson: str = ""
+    ttl_seconds: int = 15552000  # 180 days
+    embedding: list[float] | None = None
+    id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
+    created_at: int = field(default_factory=lambda: int(time.time()))
