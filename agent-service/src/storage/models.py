@@ -181,6 +181,7 @@ class DeltaOperation:
     old_value: AnyProfile | None = None
     new_value: AnyProfile | None = None
     reason: str = ""
+    agent_role: str = "main"  # "main" | "supervisor" | "worker:restaurant" | ...
 
     def to_audit_dict(self) -> dict:
         """Convert to a dict suitable for AuditLogger JSONL output."""
@@ -189,6 +190,7 @@ class DeltaOperation:
             "target_type": self.target_type,
             "target_id": self.target_id,
             "reason": self.reason,
+            "agent_role": self.agent_role,
         }
         if self.old_value is not None:
             d["old_value"] = {
@@ -230,7 +232,7 @@ class AgentCase:
     """
 
     user_id: str = ""
-    case_type: str = "recommendation"
+    case_type: str = "recommendation"  # "recommendation" | "purchase_flow" | "error_recovery" | "user_handling" | "orchestration"
     description: str = ""
     context: dict[str, Any] = field(default_factory=dict)
     action: str = ""
