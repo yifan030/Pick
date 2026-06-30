@@ -11,15 +11,46 @@ Public API:
 - CleanupJob: TTL expiry + event compression + anti-bloat
 """
 
-from src.memory.pipeline import MemoryPipeline
-from src.memory.extractor import EventExtractor
-from src.memory.profile_updater import ProfileUpdater
-from src.memory.session_summarizer import SessionSummarizer
-from src.memory.agent_case_extractor import AgentCaseExtractor
-from src.memory.consolidation import ConsolidationJob
-from src.memory.cleanup import CleanupJob
+from src.memory import prompts
+
+# Lazy imports for modules that don't exist yet (B2-B10)
+try:
+    from src.memory.pipeline import MemoryPipeline
+except ModuleNotFoundError:
+    MemoryPipeline = None  # type: ignore
+
+try:
+    from src.memory.extractor import EventExtractor
+except ModuleNotFoundError:
+    EventExtractor = None  # type: ignore
+
+try:
+    from src.memory.profile_updater import ProfileUpdater
+except ModuleNotFoundError:
+    ProfileUpdater = None  # type: ignore
+
+try:
+    from src.memory.session_summarizer import SessionSummarizer
+except ModuleNotFoundError:
+    SessionSummarizer = None  # type: ignore
+
+try:
+    from src.memory.agent_case_extractor import AgentCaseExtractor
+except ModuleNotFoundError:
+    AgentCaseExtractor = None  # type: ignore
+
+try:
+    from src.memory.consolidation import ConsolidationJob
+except ModuleNotFoundError:
+    ConsolidationJob = None  # type: ignore
+
+try:
+    from src.memory.cleanup import CleanupJob
+except ModuleNotFoundError:
+    CleanupJob = None  # type: ignore
 
 __all__ = [
+    "prompts",
     "MemoryPipeline",
     "EventExtractor",
     "ProfileUpdater",

@@ -7,7 +7,7 @@ to keep extraction costs low. They expect structured JSON output.
 
 # ── Event Extraction ──────────────────────────────────────────────────
 
-EVENT_EXTRACTION_PROMPT = """从以下对话回合中提取用户行为事件。每个事件单独列出，以 JSON 数组格式输出。
+EVENT_EXTRACTION_PROMPT = """从以下对话回合中提取用户行为事件。以 JSON Lines 格式输出，每行一个完整的 JSON 对象，不要外层数组括号。
 
 事件类型（event_type）：
 - search: 用户搜索/查找店铺
@@ -75,7 +75,7 @@ PROFILE_UPDATE_PROMPT = """你已知该用户当前的偏好档案（仅包含�
 输出格式（每行一个 JSON）：
 {{"op":"REINFORCE","target_type":"CuisinePreference","target_id":"profile_cuisine_001","new_value":{{"cuisine":"川渝火锅","confidence":0.85,"reinforce_count":4}},"reason":"用户再次搜索川渝火锅"}}
 {{"op":"ADD","target_type":"CuisinePreference","new_value":{{"cuisine":"粤菜","confidence":0.6,"weight":0.7}},"reason":"用户表示最近爱上吃粤菜"}}
-{{"op":"REVISE","target_type":"TastePreference","target_id":"profile_taste_001","old_value":{{"property":"spicy","value":"like","confidence":0.75}},"new_value":{{"property":"spicy","value":"like","confidence":0.2}},"reason":"用户明确表示不吃辣了"}}
+{{"op":"REVISE","target_type":"TastePreference","target_id":"profile_taste_001","old_value":{{"property":"spicy","value":"like","confidence":0.75}},"new_value":{{"property":"spicy","value":"avoid","confidence":0.6}},"reason":"用户明确表示不吃辣了"}}
 {{"op":"DELETE","target_type":"ConstraintPreference","target_id":"profile_constraint_003","old_value":{{"constraint":"不吃牛肉","confidence":0.5}},"reason":"用户明确纠错：'之前说错了，我其实吃牛肉'"}}
 
 本轮对话：
