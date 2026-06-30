@@ -295,19 +295,30 @@ class Neo4jClient:
                 )
 
     async def write_session_ref(
-        self, user_id: str, session_id: str, shop_ids: list[str]
+        self,
+        user_id: str,
+        session_id: str,
+        shop_ids: list[str],
+        parent_thread_id: str | None = None,
     ) -> None:
-        """Create a SessionRef node and link to mentioned shops."""
+        """Create a SessionRef node and link to mentioned shops.
+
+        Args:
+            parent_thread_id: Reserved for Supervisor + Worker multi-agent
+                (Phase 15+). Worker sub-task session_ref points to the
+                Supervisor's session_id. Currently always None.
+        """
         async with self.driver.session() as session:
             await session.run(
                 """
                 MERGE (u:User {user_id: $user_id})
                 MERGE (sr:SessionRef {session_id: $session_id})
-                SET sr.user_id = $user_id
+                SET sr.user_id = $user_id, sr.parent_thread_id = $parent_thread_id
                 MERGE (u)-[:HAS_SESSION]->(sr)
                 """,
                 user_id=user_id,
                 session_id=session_id,
+                parent_thread_id=parent_thread_id,
             )
             for shop_id in shop_ids:
                 await session.run(

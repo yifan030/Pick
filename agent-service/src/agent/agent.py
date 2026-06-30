@@ -62,10 +62,18 @@ class PickAgentState(TypedDict):
     messages: conversation history, merged via add_messages reducer.
     intent:   classified user intent – set by classify_intent node,
               read by the conditional routing edge.
+
+    Reserved for future Supervisor + Worker multi-agent (Phase 15+):
+      sub_tasks:              Supervisor 拆解的子任务列表
+      candidate_memory_deltas: Worker 返回的候选记忆变更列表
     """
 
     messages: Annotated[list, add_messages]
     intent: str  # "recommend_shop" | "chat" | "purchase"
+
+    # === 预留：多 Agent 协作（Phase 15+） ===
+    # sub_tasks: list[dict]           # Supervisor 拆解的子任务列表
+    # candidate_memory_deltas: list   # Worker 返回的候选记忆变更
 
 
 # ── System Prompts (per branch) ──────────────────────────────────────
