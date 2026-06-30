@@ -1,6 +1,6 @@
 """Tests for ProfileUpdater."""
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 from src.memory.profile_updater import ProfileUpdater
 from src.storage.models import (
     TastePreference,
@@ -32,10 +32,10 @@ def mock_llm():
 
 @pytest.fixture
 def mock_neo4j():
-    neo4j = AsyncMock()
-    neo4j.write_profile = AsyncMock(return_value="profile_new")
-    neo4j.update_profile = AsyncMock()
-    neo4j.delete_profile = AsyncMock()
+    neo4j = MagicMock()
+    neo4j.write_profile = MagicMock(return_value="profile_new")
+    neo4j.update_profile = MagicMock()
+    neo4j.delete_profile = MagicMock()
     return neo4j
 
 

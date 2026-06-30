@@ -54,7 +54,6 @@ TYPE_CLASS_MAP: dict[str, type[AnyProfile]] = {
 MAX_CONFIDENCE = 0.95
 MIN_CONFIDENCE = 0.3
 DEFAULT_CONFIDENCE = 0.6
-REINFORCE_INCREMENT = 0.1
 
 
 class ProfileUpdater:
@@ -279,6 +278,10 @@ class ProfileUpdater:
             elif nt == "ConstraintPreference":
                 lines.append(
                     f"- [约束] {p.constraint} (置信度:{p.confidence})"
+                )
+            else:
+                lines.append(
+                    f"- [{nt}] (置信度:{p.confidence})"
                 )
         return "\n".join(lines)
 

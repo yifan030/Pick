@@ -47,7 +47,7 @@ PROFILE_UPDATE_PROMPT = """你已知该用户当前的偏好档案（仅包含�
 操作类型（op）：
 - ADD: 新的偏好（之前没有的），confidence=0.6
 - REINFORCE: 已有偏好再次体现，旧 confidence += 0.1（上限 0.95），reinforce_count += 1
-- REVISE: 偏好变更（与已有偏好矛盾），旧 confidence→0.2，新 preference 从 0.6 起步
+- REVISE: 偏好变更（与已有偏好矛盾），旧 confidence→0.3，新 preference 从 0.6 起步
 - DELETE: 用户明确纠错（"我说错了"、"其实是"、"不对"），直接删除旧原子
 - MERGE: 多个同类型原子语义相似应合并
 - NOCHANGE: 本轮未涉及该偏好
