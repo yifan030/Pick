@@ -30,7 +30,9 @@ import org.xu.enums.OrderStatus;
 import org.xu.enums.SeckillVoucherOrderOperate;
 import org.xu.exception.FrameException;
 import org.xu.kafka.message.SeckillVoucherMessage;
+import org.xu.kafka.message.UserBehaviorFeedbackMessage;
 import org.xu.kafka.producer.SeckillVoucherProducer;
+import org.xu.kafka.producer.UserBehaviorFeedbackProducer;
 import org.xu.kafka.redis.RedisVoucherData;
 import org.xu.lua.SeckillVoucherDomain;
 import org.xu.lua.SeckillVoucherOperate;
@@ -138,7 +140,10 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     
     @Resource
     private IVoucherReconcileLogService voucherReconcileLogService;
-    
+
+    @Resource
+    private UserBehaviorFeedbackProducer feedbackProducer;
+
 
     private static final DefaultRedisScript<Long> SECKILL_SCRIPT;
 
@@ -517,9 +522,27 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                 "order created",
                 message
         );
+        // Send feedback event for AI memory loop
+        try {
+            Voucher voucher = voucherService.getById(messageBody.getVoucherId());
+            if (voucher != null) {
+                UserBehaviorFeedbackMessage msg = UserBehaviorFeedbackMessage.builder()
+                        .eventId("evt_behav_" + snowflakeIdGenerator.nextId())
+                        .userId(String.valueOf(userId))
+                        .eventType("purchase_success")
+                        .traceId(null)
+                        .shopId(String.valueOf(voucher.getShopId()))
+                        .timestamp(System.currentTimeMillis() / 1000)
+                        .sessionId(null)
+                        .build();
+                feedbackProducer.sendFeedback(msg);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to send purchase feedback event: {}", e.getMessage());
+        }
         return true;
     }
-    
+
     @Override
     public Long getSeckillVoucherOrder(GetVoucherOrderDto getVoucherOrderDto) {
         VoucherOrder voucherOrder = 
@@ -781,6 +804,22 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         if (voucher.getStock() != null) {
             voucher.setStock(voucher.getStock() - quantity);
             voucherService.updateById(voucher);
+        }
+
+        // Send feedback event for AI memory loop
+        try {
+            UserBehaviorFeedbackMessage msg = UserBehaviorFeedbackMessage.builder()
+                    .eventId("evt_behav_" + snowflakeIdGenerator.nextId())
+                    .userId(String.valueOf(userId))
+                    .eventType("purchase_success")
+                    .traceId(null)
+                    .shopId(String.valueOf(voucher.getShopId()))
+                    .timestamp(System.currentTimeMillis() / 1000)
+                    .sessionId(null)
+                    .build();
+            feedbackProducer.sendFeedback(msg);
+        } catch (Exception e) {
+            log.warn("Failed to send purchase feedback event: {}", e.getMessage());
         }
 
         return orderId;
