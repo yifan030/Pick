@@ -33,3 +33,26 @@ def get_llm_client() -> AsyncOpenAI:
         base_url=os.environ.get("LLM_BASE_URL"),
         api_key=os.environ.get("LLM_API_KEY", "sk-placeholder"),
     )
+
+
+# === 记忆提取模型（独立低成本模型）===
+EXTRACTOR_MODEL = os.getenv("EXTRACTOR_MODEL", None)
+EXTRACTOR_BASE_URL = os.getenv("EXTRACTOR_BASE_URL", None)
+EXTRACTOR_API_KEY = os.getenv("EXTRACTOR_API_KEY", None)
+
+
+def get_extractor_model():
+    """获取记忆提取专用模型。
+
+    如果配置了独立提取模型（EXTRACTOR_MODEL），返回该模型实例；
+    否则回退到对话主模型（渐进式接入：Phase 3-6 开发期用主模型跑通逻辑）。
+    """
+    if EXTRACTOR_MODEL:
+        return init_chat_model(
+            model=EXTRACTOR_MODEL,
+            model_provider="openai",
+            base_url=EXTRACTOR_BASE_URL or os.getenv("LLM_BASE_URL"),
+            api_key=EXTRACTOR_API_KEY or os.getenv("LLM_API_KEY", "sk-placeholder"),
+        )
+    # 回退：使用对话主模型
+    return get_model()
