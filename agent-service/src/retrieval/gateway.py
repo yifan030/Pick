@@ -27,10 +27,12 @@ class RetrievalGateway:
         milvus_store,
         neo4j_client,
         top_k: int = 10,
+        cold_start_manager=None,
     ):
         self._milvus = milvus_store
         self._neo4j = neo4j_client
         self._top_k = top_k
+        self._cold_start = cold_start_manager
 
         # Lazy-init searchers
         self._semantic: SemanticSearch | None = None
@@ -87,7 +89,43 @@ class RetrievalGateway:
                 "hard_constraints": [],
                 "entity_data": {},
                 "retrieval_skipped": True,
+                "cold_start": False,
+                "onboarding_prompt": "",
             }
+
+        # ── 0. Cold start detection (before three-way search) ─────
+        if self._cold_start is not None:
+            try:
+                is_cold = await self._cold_start.is_cold_start(user_id)
+                if is_cold:
+                    logger.info("Cold start detected for user=%s", user_id)
+                    await self._cold_start.run_behavior_import(user_id)
+
+                    # Re-check after behavior import
+                    still_cold = await self._cold_start.is_cold_start(user_id)
+                    if still_cold:
+                        logger.info(
+                            "User=%s still cold after behavior import — "
+                            "returning onboarding prompt", user_id
+                        )
+                        return {
+                            "memories": [],
+                            "profiles": [],
+                            "hard_constraints": [],
+                            "entity_data": {},
+                            "retrieval_skipped": False,
+                            "cold_start": True,
+                            "onboarding_prompt": self._cold_start.onboarding_prompt,
+                        }
+                    logger.info(
+                        "User=%s warmed by behavior import", user_id
+                    )
+            except Exception:
+                logger.exception(
+                    "Cold start check failed for user=%s — "
+                    "proceeding with normal retrieval", user_id
+                )
+                # On error, fall through to normal retrieval
 
         # ── 1. Run three-way search in parallel ────────────────────
         # Semantic and BM25 are synchronous Milvus calls
@@ -130,4 +168,6 @@ class RetrievalGateway:
             "hard_constraints": entity_data.get("hard_constraints", []),
             "entity_data": entity_data.get("extracted_entities", {}),
             "retrieval_skipped": False,
+            "cold_start": False,
+            "onboarding_prompt": "",
         }

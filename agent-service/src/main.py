@@ -16,6 +16,7 @@ from src.agent.memory.redis_history import (
     load_history,
     save_history,
 )
+from src.memory.cold_start import ColdStartManager
 from src.memory.pipeline import MemoryPipeline
 from src.retrieval.gateway import RetrievalGateway
 from src.retrieval.prompt_builder import PromptBuilder
@@ -119,13 +120,17 @@ async def lifespan(app: FastAPI):
     _agent = create_pick_agent(checkpointer=saver)
     logger.info("Agent initialized successfully")
 
+    # ── Cold Start Manager ──
+    cold_start_mgr = ColdStartManager(neo4j_client=neo4j)
+
     # ── Retrieval Gateway (Plan C) + Memory Pipeline (Plan B) ──
     _retrieval_gateway = RetrievalGateway(
         neo4j_client=neo4j,
         milvus_store=milvus,
+        cold_start_manager=cold_start_mgr,
     )
     _pipeline = MemoryPipeline(neo4j_client=neo4j, milvus_store=milvus)
-    logger.info("RetrievalGateway + MemoryPipeline initialized")
+    logger.info("ColdStartManager + RetrievalGateway + MemoryPipeline initialized")
 
     app.state.pg_manager = pg_manager
     yield
@@ -223,6 +228,8 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
                 profiles=retrieval_result["profiles"],
                 hard_constraints=retrieval_result["hard_constraints"],
                 memories=retrieval_result["memories"],
+                cold_start=retrieval_result.get("cold_start", False),
+                onboarding_prompt=retrieval_result.get("onboarding_prompt", ""),
             )
         except Exception:
             logger.exception("Retrieval failed, continuing without memories")
@@ -292,6 +299,8 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
                     profiles=retrieval_result["profiles"],
                     hard_constraints=retrieval_result["hard_constraints"],
                     memories=retrieval_result["memories"],
+                    cold_start=retrieval_result.get("cold_start", False),
+                    onboarding_prompt=retrieval_result.get("onboarding_prompt", ""),
                 )
             except Exception:
                 logger.exception("Retrieval failed in resume")
