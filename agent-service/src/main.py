@@ -1,6 +1,7 @@
 """FastAPI application for the Pick AI Shopping Guide agent."""
 
 import logging
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
@@ -10,11 +11,7 @@ from pydantic import BaseModel
 
 from src.agent.agent import create_pick_agent
 from src.agent.stream.sse import _sse, stream_agent_response
-from src.agent.memory.redis_history import (
-    generate_session_id,
-    load_history,
-    save_history,
-)
+from src.storage.postgres_saver import PostgresSaverManager
 
 logger = logging.getLogger("pick.main")
 
@@ -36,13 +33,26 @@ def get_agent():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """FastAPI lifespan: 启动时初始化 agent，关闭时清理资源."""
+    """FastAPI lifespan: 启动时初始化agent和PostgresSaver，关闭时清理资源."""
     global _agent
+
+    # 初始化PostgresSaver
+    pg_manager = PostgresSaverManager()
+    try:
+        await pg_manager.setup()
+        saver = pg_manager.create_saver()
+        logger.info("PostgresSaver初始化成功")
+    except Exception:
+        logger.exception("PostgresSaver初始化失败，降级使用InMemorySaver")
+        saver = None
+
     logger.info("Initializing Pick AI agent...")
-    _agent = create_pick_agent()
+    _agent = create_pick_agent(checkpointer=saver)
     logger.info("Agent initialized successfully")
+    app.state.pg_manager = pg_manager
     yield
     logger.info("Shutting down Pick AI agent...")
+    await pg_manager.close()
     _agent = None
 
 
@@ -71,36 +81,24 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
 
     流式处理流程：
     1. 生成或复用 session_id
-    2. 从 Redis 加载历史消息
-    3. 构建 LangGraph config（thread_id = session_id）
-    4. 通过 agent.astream() 流式生成回复
-    5. 每个 token 作为 SSE text 事件推送
-    6. 结构化事件（shop_card 等）作为 SSE 自定义事件推送
-    7. 流结束后保存消息历史到 Redis
-    8. 发送 done 事件（携带 session_id）
+    2. 构建 LangGraph config（thread_id = session_id）
+    3. 通过 agent.astream() 流式生成回复
+    4. 每个 token 作为 SSE text 事件推送
+    5. 结构化事件（shop_card 等）作为 SSE 自定义事件推送
+    6. checkpointer 自动持久化对话状态（无需Redis）
+    7. 发送 done 事件（携带 session_id）
     """
-    session_id = request.session_id or generate_session_id()
+    session_id = request.session_id or uuid.uuid4().hex
     config = {"configurable": {"thread_id": session_id}}
-
-    # 避免消息重复：如果 checkpointer 已有该 thread_id 的状态（同进程生命周期内），
-    # 则只用 checkpointer 的历史；否则从 Redis 恢复（进程重启后的恢复）。
-    existing_state = agent.get_state(config)
-    if existing_state and existing_state.values and existing_state.values.get("messages"):
-        history = []  # checkpointer 已有完整上下文，不需要 Redis 历史
-    else:
-        history = await load_history(session_id)
 
     async def _generate():
         async for sse_event in stream_agent_response(
             query=request.query,
-            history=history,
+            history=[],  # checkpointer 已完成状态恢复
             agent=agent,
             config=config,
         ):
             yield sse_event
-
-        # 流结束后，保存消息历史到 Redis
-        await _save_history_safe(agent, config, session_id)
 
     return StreamingResponse(
         _generate(),
@@ -111,11 +109,10 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
 
 @app.post("/chat/resume")
 async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
-    """Resume a conversation after a human-in-the-loop interrupt.
+    """恢复被中断的对话（人工确认流程）。
 
-    Used for purchase confirmation flow: after the agent is interrupted
-    waiting for user confirmation, the user's "确认" or "取消" response
-    is passed as a Command to resume execution.
+    用于购买确认流程：agent被中断等待用户确认后，
+    用户的"确认"或"取消"响应通过Command恢复执行。
     """
     session_id = request.session_id
     if not session_id:
@@ -132,23 +129,15 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
     interrupts = state.tasks[0].interrupts if state and state.tasks else []
 
     if not interrupts:
-        # 没有中断 → 当作普通消息处理
-        if state and state.values and state.values.get("messages"):
-            history = []
-        else:
-            history = await load_history(session_id)
-
+        # 没有中断 → 当作普通消息处理（checkpointer已有完整上下文）
         async def _generate():
             async for sse_event in stream_agent_response(
                 query=request.query,
-                history=history,
+                history=[],  # checkpointer 已有完整状态
                 agent=agent,
                 config=config,
             ):
                 yield sse_event
-
-            # 流结束后，保存消息历史到 Redis
-            await _save_history_safe(agent, config, session_id)
 
         return StreamingResponse(
             _generate(),
@@ -165,7 +154,7 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
     else:
         command = Command(resume={"confirmed": False, "reason": "unclear"})
 
-    # 有中断时 checkpointer 已有完整上下文，不需要 Redis 历史
+    # 有中断时 checkpointer 已有完整上下文
     async def _generate():
         async for sse_event in stream_agent_response(
             query=request.query,
@@ -176,27 +165,11 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
         ):
             yield sse_event
 
-        # 保存状态
-        await _save_history_safe(agent, config, session_id)
-
     return StreamingResponse(
         _generate(),
         media_type="text/event-stream",
         headers={"content-type": "text/event-stream"},
     )
-
-
-async def _save_history_safe(agent, config: dict, session_id: str) -> None:
-    """将当前 agent 状态中的消息持久化到 Redis，失败时仅记录日志."""
-    try:
-        state = agent.get_state(config)
-        if state and state.values:
-            messages = state.values.get("messages", [])
-            await save_history(session_id, messages)
-    except Exception:
-        logger.exception(
-            "Failed to save history for session=%s", session_id
-        )
 
 
 def _error_stream(message: str):
