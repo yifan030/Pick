@@ -70,3 +70,17 @@ def test_event_has_correct_defaults(extractor):
     assert e.session_id == "s1"
     assert e.compressed is False
     assert e.compressed_from == []
+
+
+def test_extract_captures_is_hard_in_payload(extractor):
+    """is_hard field from LLM JSON should be captured into payload."""
+    extractor._model.invoke.return_value.content = (
+        '{"event_type":"dietary","description":"清真饮食约束",'
+        '"payload":{"constraint":"清真","type":"religious"},"is_hard":true,"ttl_seconds":null}'
+    )
+    events = extractor.extract("我是回民", "好的", "")
+    assert len(events) == 1
+    e = events[0]
+    assert e.event_type == "dietary"
+    assert e.payload["is_hard"] is True
+    assert e.payload["constraint"] == "清真"

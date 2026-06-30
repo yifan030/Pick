@@ -12,6 +12,9 @@ block the user-facing response.
 import json
 import logging
 from typing import Any
+
+from langchain_core.messages import HumanMessage
+
 from src.storage.models import MemoryEvent
 from src.memory.prompts import EVENT_EXTRACTION_PROMPT
 
@@ -57,9 +60,9 @@ class EventExtractor:
         )
 
         try:
-            from langchain_core.messages import HumanMessage
             response = self._model.invoke([HumanMessage(content=prompt)])
-            raw = response.content.strip()
+            content = response.content
+            raw = (content if isinstance(content, str) else str(content) if content else "").strip()
         except Exception:
             logger.exception("Event extraction LLM call failed")
             return []
@@ -82,11 +85,14 @@ class EventExtractor:
                 continue
 
             try:
+                payload = data.get("payload", {})
+                if "is_hard" in data:
+                    payload["is_hard"] = data["is_hard"]
                 event = MemoryEvent(
                     user_id=user_id,
                     event_type=data.get("event_type", "unknown"),
                     description=data.get("description", ""),
-                    payload=data.get("payload", {}),
+                    payload=payload,
                     session_id=session_id,
                     ttl_seconds=data.get("ttl_seconds"),
                 )
