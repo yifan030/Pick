@@ -1,0 +1,69 @@
+[
+  {
+    "scenario_id": "eval_001",
+    "description": "用户有明确口味偏好+预算约束，在特定商圈搜索火锅",
+    "user_context": {
+      "known_profiles": [
+        {"type": "TastePreference", "property": "spicy", "value": "avoid", "confidence": 0.9},
+        {"type": "CuisinePreference", "cuisine": "川渝火锅", "confidence": 0.85},
+        {"type": "BudgetPreference", "range_min": 50, "range_max": 100, "confidence": 0.8},
+        {"type": "AreaPreference", "area": "春熙路", "confidence": 0.7}
+      ],
+      "recent_events": [
+        "在春熙路搜索火锅",
+        "浏览了蜀大侠优惠券"
+      ],
+      "current_session_summary": "用户想在春熙路附近找人均80以内的聚餐地点"
+    },
+    "user_query": "推荐一家春熙路附近适合聚餐的火锅店",
+    "expected_retrieval": {
+      "should_include": ["profile_taste_spicy_avoid", "profile_cuisine_hotpot", "profile_budget_50_100", "profile_area_chunxi"],
+      "should_exclude": ["profile_scene_romantic_date"]
+    },
+    "expected_recommendation_constraints": [
+      "不推荐含辣的店铺",
+      "优先川渝火锅类型",
+      "人均 < 100",
+      "商圈 = 春熙路"
+    ]
+  },
+  {
+    "scenario_id": "eval_002",
+    "description": "用户有硬约束（清真），搜索美食但不应推荐非清真店铺",
+    "user_context": {
+      "known_profiles": [
+        {"type": "DietaryPreference", "constraint": "清真", "type": "religious", "is_hard": true, "confidence": 1.0},
+        {"type": "BudgetPreference", "range_min": 30, "range_max": 80, "confidence": 0.6}
+      ],
+      "recent_events": ["搜索附近美食"],
+      "current_session_summary": "用户在太古里附近找吃饭的地方"
+    },
+    "user_query": "太古里附近有什么好吃的？",
+    "expected_retrieval": {
+      "should_include": ["profile_dietary_halal"],
+      "should_exclude": []
+    },
+    "expected_recommendation_constraints": [
+      "所有推荐店铺必须符合清真要求",
+      "商圈 = 太古里",
+      "不推荐非清真店铺",
+      "人均在30-80范围优先"
+    ]
+  },
+  {
+    "scenario_id": "eval_003",
+    "description": "新用户冷启动，无任何 Profile，应触发 onboarding",
+    "user_context": {
+      "known_profiles": [],
+      "recent_events": [],
+      "current_session_summary": null
+    },
+    "user_query": "推荐一家好吃的店",
+    "expected_retrieval": {
+      "should_include": [],
+      "should_exclude": []
+    },
+    "expected_recommendation_constraints": [],
+    "expect_cold_start": true
+  }
+]
