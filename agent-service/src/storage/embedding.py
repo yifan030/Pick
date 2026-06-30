@@ -47,4 +47,20 @@ def _lazy_load_embedding(mod_key: str) -> None:
     spec.loader.exec_module(mod)
 
 
-__all__ = ["embed_texts"]
+def embed_single(text: str, **kwargs) -> list[float]:
+    """Embed a single text string.
+
+    This is a thin wrapper around ``embed_texts`` that handles the
+    single-text case so callers don't need to wrap/unwrap lists.
+
+    Args:
+        text: A single text string to embed.
+        **kwargs: Additional keyword arguments for the embedding function.
+
+    Returns:
+        A single embedding vector.
+    """
+    return embed_texts([text], **kwargs)[0]
+
+
+__all__ = ["embed_texts", "embed_single"]
