@@ -35,6 +35,9 @@ class ProfileBase:
     updated_at: int = field(default_factory=lambda: int(time.time()))
     ttl_seconds: int | None = None  # None = permanent
     expires_at: int | None = None
+    id: str = ""                      # Neo4j elementId
+    reinforce_count: int = 0
+    last_reinforced_at: int | None = None
 
     def __post_init__(self):
         """Derive expires_at from ttl_seconds when not explicitly set."""
@@ -64,7 +67,6 @@ class TastePreference(ProfileBase):
 
     property: str = ""
     value: str = ""          # "like" | "avoid"
-    reinforce_count: int = 0
 
 
 @dataclass
@@ -92,7 +94,6 @@ class CuisinePreference(ProfileBase):
 
     cuisine: str = ""
     weight: float = 0.7
-    reinforce_count: int = 0
 
 
 @dataclass

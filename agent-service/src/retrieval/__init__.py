@@ -44,6 +44,11 @@ except ModuleNotFoundError:
     ConsistencyChecker = None  # type: ignore
 
 try:
+    from src.retrieval.feedback_consumer import FeedbackConsumer  # noqa: F401
+except ModuleNotFoundError:
+    FeedbackConsumer = None  # type: ignore
+
+try:
     from src.retrieval.semantic_search import SemanticSearch  # noqa: F401
 except ModuleNotFoundError:
     SemanticSearch = None  # type: ignore
@@ -68,4 +73,5 @@ __all__ = [
     "PromptBuilder",
     "FeedbackProcessor",
     "ConsistencyChecker",
+    "FeedbackConsumer",
 ]

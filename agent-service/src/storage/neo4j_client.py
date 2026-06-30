@@ -127,7 +127,7 @@ class Neo4jClient:
                 cursor = await session.run(query, user_id=user_id)
                 async for record in cursor:
                     node = record["p"]
-                    profile = _neo4j_node_to_profile(nt, dict(node))
+                    profile = _neo4j_node_to_profile(nt, dict(node), node.element_id)
                     if profile:
                         results.append(profile)
         return results
@@ -199,6 +199,28 @@ class Neo4jClient:
                         results.append(profile)
 
         return results
+
+    async def get_profiles_by_trace(self, trace_id: str) -> list[AnyProfile]:
+        """Get profiles associated with a recommendation trace.
+
+        Looks up the EventRef by trace_id, finds the associated user,
+        and returns all active profiles for that user.
+
+        When Phase 13c builds the trace→profile linkage (referenced_profiles
+        in shop_card SSE), this will be refined to return only the specific
+        profiles referenced in the recommendation.
+        """
+        query = """
+        MATCH (er:EventRef {event_id: $trace_id})
+        RETURN er.user_id AS user_id, elementId(er) AS er_id
+        """
+        async with self.driver.session() as session:
+            result = await session.run(query, trace_id=trace_id)
+            record = await result.single()
+            if record is None:
+                return []
+            user_id = record["user_id"]
+            return await self.read_profiles(user_id)
 
     # ── Entity Graph / Subgraph Traversal ──────────────────────────
 
@@ -445,7 +467,7 @@ def _profile_to_neo4j_props(profile: AnyProfile) -> dict:
     return props
 
 
-def _neo4j_node_to_profile(node_type: str, props: dict) -> AnyProfile | None:
+def _neo4j_node_to_profile(node_type: str, props: dict, element_id: str = "") -> AnyProfile | None:
     """Convert a Neo4j node properties dict to a ProfileAtom instance."""
     cls = NODE_TYPE_MAP.get(node_type)
     if cls is None:
@@ -455,4 +477,6 @@ def _neo4j_node_to_profile(node_type: str, props: dict) -> AnyProfile | None:
     from dataclasses import fields as dc_fields
     valid_keys = {f.name for f in dc_fields(cls)}
     filtered = {k: v for k, v in props.items() if k in valid_keys}
+    if "id" in valid_keys:
+        filtered["id"] = element_id
     return cls(**filtered)
