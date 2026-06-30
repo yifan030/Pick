@@ -5,6 +5,7 @@ Covers the three core scenarios:
 2. Behavior-data fetching (with and without java_client).
 3. Profile construction from behavior data (correct types, source, confidence).
 4. Full orchestration import.
+5. Onboarding prompt, skip detection, and first-reinforce boost.
 """
 
 from __future__ import annotations
@@ -343,3 +344,56 @@ async def test_run_behavior_import_empty_behavior(manager, mock_neo4j, mock_java
     count = await manager.run_behavior_import("u1")
     assert count == 0
     mock_neo4j.write_profile.assert_not_awaited()
+
+
+# ── Onboarding prompt & skip detection ──────────────────────────────────────
+
+
+class TestOnboarding:
+    """Tests for onboarding prompt, skip detection, and first-reinforce boost."""
+
+    def test_build_onboarding_prompt(self):
+        """Prompt should contain 'AI 导购' and '人均预算'."""
+        prompt = ColdStartManager.build_onboarding_prompt()
+        assert "AI 导购" in prompt
+        assert "人均预算" in prompt
+
+    @pytest.mark.parametrize(
+        "message, expected",
+        [
+            ("不用了，直接推荐吧", True),
+            ("跳过", True),
+            ("我想吃火锅", False),
+            ("随便推荐", True),
+            ("下次再说吧", True),
+            ("不用了", True),
+            ("推荐点好吃的", False),
+            ("直接搜吧", True),
+            ("不需要", True),
+        ],
+    )
+    def test_is_skip_onboarding(self, message, expected):
+        """Should detect skip phrases correctly."""
+        result = ColdStartManager.is_skip_onboarding(message)
+        assert result is expected
+
+    def test_first_reinforce_boost_behavior_import(self):
+        """Profiles from behavior_import should get a 0.2 boost."""
+        profile = CuisinePreference(user_id="u1", cuisine="川渝火锅")
+        profile.source = "behavior_import"
+        boost = ColdStartManager.get_first_reinforce_boost(profile)
+        assert boost == 0.2
+
+    def test_first_reinforce_boost_normal(self):
+        """Profiles with other sources should get a 0.1 boost."""
+        profile = CuisinePreference(user_id="u1", cuisine="川渝火锅")
+        profile.source = "conversation"
+        boost = ColdStartManager.get_first_reinforce_boost(profile)
+        assert boost == 0.1
+
+    def test_first_reinforce_boost_no_source(self):
+        """Profiles without a source attribute should get a 0.1 boost."""
+        profile = CuisinePreference(user_id="u1", cuisine="川渝火锅")
+        # Deliberately not setting source
+        boost = ColdStartManager.get_first_reinforce_boost(profile)
+        assert boost == 0.1

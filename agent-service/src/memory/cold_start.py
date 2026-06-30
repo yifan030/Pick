@@ -22,6 +22,24 @@ from src.storage.models import (
 
 logger = logging.getLogger("pick.memory.cold_start")
 
+# ── Onboarding constants ──────────────────────────────────────────────────
+
+ONBOARDING_PROMPT = """## 冷启动 Onboarding
+检测到这是你第一次使用 AI 导购。为了给你更精准的推荐，我想了解两件事：
+1. **饮食偏好**：有什么忌口或偏好吗？（比如不吃辣、清真、素食…可以跳过）
+2. **人均预算**：大概多少？（比如 50 以内、50-100、100-200…可以跳过）
+直接告诉我即可，比如"不吃辣，预算 100 左右"。"""
+
+SKIP_PHRASES = [
+    "不用了",
+    "跳过",
+    "直接搜吧",
+    "不用",
+    "下次再说",
+    "不需要",
+    "随便推荐",
+]
+
 
 class ColdStartManager:
     """Manages cold-start profile initialization from behavioral data.
@@ -227,3 +245,29 @@ class ColdStartManager:
             user_id,
         )
         return count
+
+    # ── Onboarding helpers ───────────────────────────────────────────────
+
+    @staticmethod
+    def build_onboarding_prompt() -> str:
+        """Return the onboarding prompt shown to first-time users."""
+        return ONBOARDING_PROMPT
+
+    @staticmethod
+    def is_skip_onboarding(user_message: str) -> bool:
+        """Return True when *user_message* contains any known skip phrase."""
+        msg = user_message.strip().lower()
+        for phrase in SKIP_PHRASES:
+            if phrase in msg:
+                return True
+        return False
+
+    @staticmethod
+    def get_first_reinforce_boost(profile: Any) -> float:
+        """Return the first-reinforce boost factor for *profile*.
+
+        Profiles sourced from behavior import receive a higher boost (0.2)
+        to accelerate convergence. All others use the default (0.1).
+        """
+        source = getattr(profile, "source", None)
+        return 0.2 if source == "behavior_import" else 0.1
