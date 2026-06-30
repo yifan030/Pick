@@ -1,0 +1,31 @@
+version: "3.8"
+services:
+  neo4j:
+    image: neo4j:5.26
+    container_name: pick-neo4j
+    ports:
+      - "7474:7474"   # HTTP
+      - "7687:7687"   # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/pick-neo4j-dev
+      NEO4J_PLUGINS: '["apoc"]'
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: pick-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: pick
+      POSTGRES_PASSWORD: pick-pg-dev
+      POSTGRES_DB: pick_agent_checkpoint
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  pg_data:
