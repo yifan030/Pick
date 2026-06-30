@@ -65,9 +65,9 @@ class ProfileUpdater:
             neo4j_client: Neo4j storage client with write_profile/update_profile/delete_profile.
         """
         if model is None:
-            from src.agent.config import get_model
+            from src.agent.config import get_extractor_model
 
-            model = get_model()
+            model = get_extractor_model()
         self._model = model
         self._neo4j = neo4j_client
 

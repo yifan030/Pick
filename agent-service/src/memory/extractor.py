@@ -31,8 +31,8 @@ class EventExtractor:
             model: A LangChain BaseChatModel instance. If None, uses config.get_model().
         """
         if model is None:
-            from src.agent.config import get_model
-            model = get_model()
+            from src.agent.config import get_extractor_model
+            model = get_extractor_model()
         self._model = model
 
     def extract(

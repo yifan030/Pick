@@ -40,9 +40,9 @@ class AgentCaseExtractor:
         environment).
         """
         if model is None:
-            from src.agent.config import get_model
+            from src.agent.config import get_extractor_model
 
-            model = get_model()
+            model = get_extractor_model()
         self._model = model
 
     # ------------------------------------------------------------------
