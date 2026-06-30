@@ -36,6 +36,7 @@ public class UserBehaviorFeedbackProducer extends AbstractProducerHandler<Messag
 
     @Override
     protected void afterSendFailure(String topic, MessageExtend<UserBehaviorFeedbackMessage> message, Throwable throwable) {
+        super.afterSendFailure(topic, message, throwable);
         log.error("Failed to send feedback event: userId={}, eventType={}, error={}",
                 message.getMessageBody().getUserId(), message.getMessageBody().getEventType(), throwable.getMessage());
         // 反馈事件是非关键路径，发送失败不阻塞主流程，只记录日志
