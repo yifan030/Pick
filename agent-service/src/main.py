@@ -17,6 +17,7 @@ from src.agent.memory.redis_history import (
     save_history,
 )
 from src.memory.pipeline import MemoryPipeline
+from src.memory.user_control import MemoryControlHandler
 from src.retrieval.gateway import RetrievalGateway
 from src.retrieval.prompt_builder import PromptBuilder
 from src.storage.postgres_saver import PostgresSaverManager
@@ -93,16 +94,29 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.exception("PostgresSaver init failed, falling back to InMemorySaver")
 
+    # ── Neo4j Client (Plan A) ──
+    # TODO: Initialize Neo4jClient from Plan A (env vars NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
+    neo4j_client = None
+
+    # ── Memory Control Handler (Plan D) ──
+    memory_control = MemoryControlHandler(neo4j_client=neo4j_client)
+    app.state.memory_control = memory_control
+    logger.info("MemoryControlHandler initialized (neo4j_client=%s)", "ready" if neo4j_client else "pending")
+
     # ── Agent ──
     logger.info("Initializing Pick AI agent...")
-    _agent = create_pick_agent(checkpointer=saver)
+    _agent = create_pick_agent(
+        checkpointer=saver,
+        memory_control_handler=memory_control,
+        neo4j_client=neo4j_client,
+    )
     logger.info("Agent initialized successfully")
 
     # ── Retrieval Gateway (Plan C) ──
     _retrieval_gateway = None  # TODO: wire when Milvus + Neo4j are ready
 
     # ── Memory Pipeline (Plan B) ──
-    _pipeline = MemoryPipeline(neo4j_client=None, milvus_store=None)
+    _pipeline = MemoryPipeline(neo4j_client=neo4j_client, milvus_store=None)
     logger.info("MemoryPipeline initialized (storage clients pending Plan A)")
 
     app.state.pg_manager = pg_manager
