@@ -1,5 +1,6 @@
 """FastAPI application for the Pick AI Shopping Guide agent."""
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -15,11 +16,13 @@ from src.agent.memory.redis_history import (
     load_history,
     save_history,
 )
+from src.memory.pipeline import MemoryPipeline
 
 logger = logging.getLogger("pick.main")
 
 # ── Global agent instance (initialized at startup) ──────────────────
 _agent = None
+_pipeline: MemoryPipeline | None = None
 
 
 def get_agent():
@@ -36,14 +39,55 @@ def get_agent():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """FastAPI lifespan: 启动时初始化 agent，关闭时清理资源."""
-    global _agent
+    """FastAPI lifespan: 启动时初始化 agent 和 memory pipeline，关闭时清理资源."""
+    global _agent, _pipeline
     logger.info("Initializing Pick AI agent...")
     _agent = create_pick_agent()
     logger.info("Agent initialized successfully")
+    # Memory pipeline: lazy-init with None storage clients for now;
+    # will be wired with real Neo4j/Milvus clients from Plan A.
+    _pipeline = MemoryPipeline(neo4j_client=None, milvus_store=None)
+    logger.info("MemoryPipeline initialized (storage clients pending Plan A)")
     yield
     logger.info("Shutting down Pick AI agent...")
     _agent = None
+    _pipeline = None
+
+
+# ── Memory Extraction ────────────────────────────────────────────────
+
+
+def _trigger_memory_extraction(
+    user_id: str,
+    session_id: str,
+    user_message: str,
+    assistant_response: str,
+    tool_calls: str = "",
+    round_index: int = 1,
+    recommendations: str = "",
+    user_feedback: str = "",
+):
+    """Schedule memory extraction as a background task (non-blocking)."""
+    if _pipeline is None:
+        logger.warning("MemoryPipeline not initialized, skipping extraction")
+        return
+
+    async def _run():
+        try:
+            await _pipeline.extract_memories(
+                user_id=user_id,
+                session_id=session_id,
+                user_message=user_message,
+                assistant_response=assistant_response,
+                tool_calls=tool_calls,
+                round_index=round_index,
+                recommendations=recommendations,
+                user_feedback=user_feedback,
+            )
+        except Exception:
+            logger.exception("Background memory extraction failed")
+
+    asyncio.create_task(_run())
 
 
 # ── FastAPI App ─────────────────────────────────────────────────────
@@ -101,6 +145,16 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
 
         # 流结束后，保存消息历史到 Redis
         await _save_history_safe(agent, config, session_id)
+
+        # 触发后台记忆提取（非阻塞）
+        if request.user_id:
+            _trigger_memory_extraction(
+                user_id=request.user_id,
+                session_id=session_id,
+                user_message=request.query,
+                assistant_response="",  # TODO: collect from SSE stream
+                round_index=1,           # TODO: track conversation round
+            )
 
     return StreamingResponse(
         _generate(),
