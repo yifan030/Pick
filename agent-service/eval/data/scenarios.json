@@ -32,7 +32,7 @@
     "description": "用户有硬约束（清真），搜索美食但不应推荐非清真店铺",
     "user_context": {
       "known_profiles": [
-        {"type": "DietaryPreference", "constraint": "清真", "type": "religious", "is_hard": true, "confidence": 1.0},
+        {"type": "DietaryPreference", "constraint": "清真", "constraint_type": "religious", "is_hard": true, "confidence": 1.0},
         {"type": "BudgetPreference", "range_min": 30, "range_max": 80, "confidence": 0.6}
       ],
       "recent_events": ["搜索附近美食"],
