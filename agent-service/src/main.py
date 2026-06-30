@@ -119,6 +119,29 @@ async def lifespan(app: FastAPI):
     _pipeline = MemoryPipeline(neo4j_client=neo4j_client, milvus_store=None)
     logger.info("MemoryPipeline initialized (storage clients pending Plan A)")
 
+    # ── Feedback Consumer (Kafka) ──
+    import os
+    from src.retrieval.feedback_consumer import FeedbackConsumer
+
+    kafka_bootstrap = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+    feedback_topic = os.getenv("FEEDBACK_TOPIC", "user.behavior.feedback")
+
+    feedback_consumer = FeedbackConsumer(
+        neo4j_client=neo4j_client,
+        bootstrap_servers=kafka_bootstrap,
+        topic=feedback_topic,
+    )
+    try:
+        await feedback_consumer.start()
+        consume_task = asyncio.create_task(feedback_consumer.consume_loop())
+        app.state.feedback_consumer = feedback_consumer
+        app.state.feedback_task = consume_task
+        logger.info("FeedbackConsumer started on topic: %s", feedback_topic)
+    except Exception:
+        logger.warning("Failed to start FeedbackConsumer (Kafka may not be available): %s", exc_info=True)
+        app.state.feedback_consumer = None
+        app.state.feedback_task = None
+
     app.state.pg_manager = pg_manager
     yield
     logger.info("Shutting down Pick AI agent...")
@@ -126,6 +149,17 @@ async def lifespan(app: FastAPI):
         await pg_manager.close()
     except Exception:
         logger.exception("Error closing PostgresSaver")
+    # 优雅关闭 FeedbackConsumer
+    feedback_consumer = getattr(app.state, 'feedback_consumer', None)
+    if feedback_consumer:
+        await feedback_consumer.stop()
+    feedback_task = getattr(app.state, 'feedback_task', None)
+    if feedback_task and not feedback_task.done():
+        feedback_task.cancel()
+        try:
+            await feedback_task
+        except asyncio.CancelledError:
+            pass
     _agent = None
     _pipeline = None
     _retrieval_gateway = None
