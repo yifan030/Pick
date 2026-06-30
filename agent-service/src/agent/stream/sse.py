@@ -24,6 +24,7 @@ async def stream_agent_response(
     config: dict,
     *,
     command: Command | None = None,
+    memory_context: str = "",
 ) -> str:
     """Stream agent response as SSE events via LangGraph v3 event streaming.
 
@@ -45,7 +46,10 @@ async def stream_agent_response(
     if command is not None:
         stream_input = command
     else:
-        input_messages = history + [{"role": "user", "content": query}]
+        input_messages = list(history) + [{"role": "user", "content": query}]
+        # Prepend memory context as system message if provided
+        if memory_context:
+            input_messages = [{"role": "system", "content": memory_context}] + input_messages
         stream_input = {"messages": input_messages}
 
     try:
