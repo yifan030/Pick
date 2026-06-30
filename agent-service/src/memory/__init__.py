@@ -16,37 +16,37 @@ from src.memory import prompts
 # Lazy imports for modules that don't exist yet (B2-B10)
 try:
     from src.memory.pipeline import MemoryPipeline
-except ModuleNotFoundError:
+except (ModuleNotFoundError, TypeError):
     MemoryPipeline = None  # type: ignore
 
 try:
     from src.memory.extractor import EventExtractor
-except ModuleNotFoundError:
+except (ModuleNotFoundError, TypeError):
     EventExtractor = None  # type: ignore
 
 try:
     from src.memory.profile_updater import ProfileUpdater
-except ModuleNotFoundError:
+except (ModuleNotFoundError, TypeError):
     ProfileUpdater = None  # type: ignore
 
 try:
     from src.memory.session_summarizer import SessionSummarizer
-except ModuleNotFoundError:
+except (ModuleNotFoundError, TypeError):
     SessionSummarizer = None  # type: ignore
 
 try:
     from src.memory.agent_case_extractor import AgentCaseExtractor
-except ModuleNotFoundError:
+except (ModuleNotFoundError, TypeError):
     AgentCaseExtractor = None  # type: ignore
 
 try:
     from src.memory.consolidation import ConsolidationJob
-except ModuleNotFoundError:
+except (ModuleNotFoundError, TypeError):
     ConsolidationJob = None  # type: ignore
 
 try:
     from src.memory.cleanup import CleanupJob
-except ModuleNotFoundError:
+except (ModuleNotFoundError, TypeError):
     CleanupJob = None  # type: ignore
 
 __all__ = [

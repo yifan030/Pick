@@ -9,6 +9,8 @@ This runs asynchronously after each SSE stream completes — it does NOT
 block the user-facing response.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from typing import Any
