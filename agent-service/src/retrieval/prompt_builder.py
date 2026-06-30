@@ -23,6 +23,8 @@ class PromptBuilder:
         hard_constraints: list[AnyProfile],
         memories: list[dict],
         agent_cases: list[dict] | None = None,
+        cold_start: bool = False,
+        onboarding_prompt: str = "",
     ) -> str:
         """Build the full memory context string.
 
@@ -31,10 +33,15 @@ class PromptBuilder:
             hard_constraints: Hard constraint atoms (is_hard=true).
             memories: Fused memory results from RetrievalGateway.
             agent_cases: Optional agent case results.
+            cold_start: If True, return onboarding prompt instead of memory context.
+            onboarding_prompt: The onboarding message to return when cold_start=True.
 
         Returns:
             A markdown-formatted string for injection into the system prompt.
         """
+        if cold_start:
+            return onboarding_prompt or self._default_onboarding()
+
         sections = []
 
         # -- 1. Profiles section -------------------------------------------
@@ -167,3 +174,14 @@ class PromptBuilder:
             if lesson:
                 lines.append(f"- {outcome_emoji} {lesson}")
         return "\n".join(lines)
+
+    @staticmethod
+    def _default_onboarding() -> str:
+        """Return a built-in default onboarding prompt (fallback)."""
+        return (
+            "## 冷启动 Onboarding\n\n"
+            "检测到这是你第一次使用 AI 导购。为了给你更精准的推荐，我想了解两件事：\n\n"
+            "1. **饮食偏好**：有什么忌口或偏好吗？（比如不吃辣、清真、素食…可以跳过）\n"
+            "2. **人均预算**：大概多少？（比如 50 以内、50-100、100-200…可以跳过）\n\n"
+            "直接告诉我即可，比如"不吃辣，预算 100 左右"。"
+        )

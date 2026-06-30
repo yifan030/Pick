@@ -3,6 +3,7 @@ from __future__ import annotations
 """Retrieval Gateway: orchestrates three-way parallel memory retrieval.
 
 On new sessions only (existing sessions reuse LangGraph checkpoint):
+0. Cold start check: detect new users, run behavior import, trigger onboarding
 1. SemanticSearch: dense vector search across all memory collections
 2. BM25Search: sparse keyword search across all memory collections
 3. EntityBoost: Neo4j subgraph traversal + profile/hard-constraint lookup
@@ -11,6 +12,8 @@ On new sessions only (existing sessions reuse LangGraph checkpoint):
 """
 
 import logging
+from typing import Any
+
 from src.retrieval.semantic_search import SemanticSearch
 from src.retrieval.bm25_search import BM25Search
 from src.retrieval.entity_boost import EntityBoost
@@ -27,10 +30,12 @@ class RetrievalGateway:
         milvus_store,
         neo4j_client,
         top_k: int = 10,
+        cold_start_manager: Any = None,
     ):
         self._milvus = milvus_store
         self._neo4j = neo4j_client
         self._top_k = top_k
+        self._cold_start = cold_start_manager
 
         # Lazy-init searchers
         self._semantic: SemanticSearch | None = None
@@ -78,6 +83,8 @@ class RetrievalGateway:
             - hard_constraints: list of hard constraint atoms
             - entity_data: entity extraction results
             - retrieval_skipped: bool
+            - cold_start: bool (True for new users needing onboarding)
+            - onboarding_prompt: str (onboarding message when cold_start=True)
         """
         if not is_new_session:
             logger.debug("Existing session — skipping retrieval")
@@ -87,7 +94,29 @@ class RetrievalGateway:
                 "hard_constraints": [],
                 "entity_data": {},
                 "retrieval_skipped": True,
+                "cold_start": False,
+                "onboarding_prompt": "",
             }
+
+        # ── 0. Cold start check ─────────────────────────────────────
+        if self._cold_start is not None:
+            try:
+                if await self._cold_start.is_cold_start(user_id):
+                    imported = await self._cold_start.run_behavior_import(user_id)
+                    logger.info("Cold start: imported %d profiles for user=%s", imported, user_id)
+                    if await self._cold_start.is_cold_start(user_id):
+                        # Still cold after import → trigger onboarding
+                        return {
+                            "memories": [],
+                            "profiles": [],
+                            "hard_constraints": [],
+                            "entity_data": {},
+                            "retrieval_skipped": False,
+                            "cold_start": True,
+                            "onboarding_prompt": self._cold_start.build_onboarding_prompt(),
+                        }
+            except Exception:
+                logger.exception("Cold start check failed for user=%s, proceeding to normal retrieval", user_id)
 
         # ── 1. Run three-way search in parallel ────────────────────
         # Semantic and BM25 are synchronous Milvus calls
@@ -130,4 +159,6 @@ class RetrievalGateway:
             "hard_constraints": entity_data.get("hard_constraints", []),
             "entity_data": entity_data.get("extracted_entities", {}),
             "retrieval_skipped": False,
+            "cold_start": False,
+            "onboarding_prompt": "",
         }

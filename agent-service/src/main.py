@@ -18,6 +18,7 @@ from src.agent.memory.redis_history import (
 )
 from src.memory.pipeline import MemoryPipeline
 from src.memory.user_control import MemoryControlHandler
+from src.memory.cold_start import ColdStartManager
 from src.retrieval.gateway import RetrievalGateway
 from src.retrieval.prompt_builder import PromptBuilder
 from src.storage.postgres_saver import PostgresSaverManager
@@ -98,6 +99,11 @@ async def lifespan(app: FastAPI):
     # TODO: Initialize Neo4jClient from Plan A (env vars NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
     neo4j_client = None
 
+    # ── Cold Start Manager (Plan D) ──
+    cold_start_mgr = ColdStartManager(neo4j_client=neo4j_client, java_client=None)
+    app.state.cold_start_manager = cold_start_mgr
+    logger.info("ColdStartManager initialized (neo4j_client=%s)", "ready" if neo4j_client else "pending")
+
     # ── Memory Control Handler (Plan D) ──
     memory_control = MemoryControlHandler(neo4j_client=neo4j_client)
     app.state.memory_control = memory_control
@@ -112,8 +118,13 @@ async def lifespan(app: FastAPI):
     )
     logger.info("Agent initialized successfully")
 
-    # ── Retrieval Gateway (Plan C) ──
-    _retrieval_gateway = None  # TODO: wire when Milvus + Neo4j are ready
+    # ── Retrieval Gateway (Plan C + D cold start) ──
+    _retrieval_gateway = RetrievalGateway(
+        milvus_store=None,  # TODO: wire MilvusMemoryStore from Plan A
+        neo4j_client=neo4j_client,
+        cold_start_manager=cold_start_mgr,
+    ) if neo4j_client else None
+    logger.info("RetrievalGateway initialized (cold_start=%s)", "ready" if cold_start_mgr else "pending")
 
     # ── Memory Pipeline (Plan B) ──
     _pipeline = MemoryPipeline(neo4j_client=neo4j_client, milvus_store=None)
