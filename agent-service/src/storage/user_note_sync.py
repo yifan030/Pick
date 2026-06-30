@@ -1,3 +1,9 @@
+"""User note (blog) sync: fetch from Java → embed → upsert to Milvus.
+
+Pulls blog/exploration-note data via Java sync API, generates text embeddings,
+and upserts into the ``collection_user_note`` Milvus collection.
+"""
+
 import os
 from collections.abc import Callable
 from typing import Any
@@ -5,7 +11,8 @@ from typing import Any
 import httpx
 from pymilvus import MilvusClient
 
-from src.milvus import USER_NOTE
+from src.storage.milvus_store import COLLECTION_USER_NOTE, EMBEDDING_DIM, HNSW_PARAMS
+from src.storage.embedding import embed_texts as _default_embed_texts
 
 BATCH_SIZE = 50
 CONTENT_TYPE = "user_note"
@@ -61,14 +68,12 @@ def run_full_sync(
     java_base_url: str | None = None,
     internal_token: str | None = None,
 ) -> int:
-    from ingestion.embedding import embed_texts as default_embed_texts
-
     if fetch_blogs is None:
         fetch_blogs = lambda since: fetch_blogs_from_java(
             since, base_url=java_base_url, internal_token=internal_token
         )
     if embed_texts is None:
-        embed_texts = default_embed_texts
+        embed_texts = _default_embed_texts
 
     blogs = fetch_blogs(0)
     if not blogs:
@@ -86,8 +91,45 @@ def run_full_sync(
 
     rows = [to_milvus_row(blog, vector) for blog, vector in zip(blogs, embeddings)]
     for i in range(0, len(rows), BATCH_SIZE):
-        milvus_client.upsert(collection_name=USER_NOTE, data=rows[i : i + BATCH_SIZE])
+        milvus_client.upsert(collection_name=COLLECTION_USER_NOTE, data=rows[i : i + BATCH_SIZE])
     return len(rows)
+
+
+def _init_product_milvus(host: str, port: int, dim: int) -> MilvusClient:
+    """Create a MilvusClient and ensure product collections exist."""
+    client = MilvusClient(uri=f"http://{host}:{port}")
+
+    for name, schema_builder in [
+        (COLLECTION_USER_NOTE, _make_user_note_schema),
+    ]:
+        if client.has_collection(name):
+            continue
+        schema = schema_builder(dim)
+        index_params = client.prepare_index_params()
+        index_params.add_index(
+            field_name="embedding",
+            index_type="HNSW",
+            metric_type="COSINE",
+            params=HNSW_PARAMS,
+        )
+        client.create_collection(
+            collection_name=name,
+            schema=schema,
+            index_params=index_params,
+        )
+
+    return client
+
+
+def _make_user_note_schema(dim: int):
+    from pymilvus import DataType
+    schema = MilvusClient.create_schema()
+    schema.add_field("id", DataType.VARCHAR, max_length=128, is_primary=True)
+    schema.add_field("embedding", DataType.FLOAT_VECTOR, dim=dim)
+    schema.add_field("shop_id", DataType.INT64)
+    schema.add_field("user_nickname", DataType.VARCHAR, max_length=256)
+    schema.add_field("content_type", DataType.VARCHAR, max_length=64)
+    return schema
 
 
 def run_full_user_note_sync(
@@ -104,9 +146,7 @@ def run_full_user_note_sync(
     milvus_port = milvus_port or int(os.environ.get("MILVUS_PORT", "19530"))
     embedding_dim = embedding_dim or int(os.environ.get("EMBEDDING_DIM", "1024"))
 
-    from milvus import init
-
-    milvus_client = init(embedding_dim, host=milvus_host, port=milvus_port)
+    milvus_client = _init_product_milvus(host=milvus_host, port=milvus_port, dim=embedding_dim)
     return run_full_sync(
         milvus_client=milvus_client,
         embedding_dim=embedding_dim,
@@ -117,4 +157,4 @@ def run_full_user_note_sync(
 
 if __name__ == "__main__":
     synced = run_full_user_note_sync()
-    print(f"synced {synced} blogs to {USER_NOTE}")
+    print(f"synced {synced} blogs to {COLLECTION_USER_NOTE}")

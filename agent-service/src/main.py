@@ -1,7 +1,9 @@
 """FastAPI application for the Pick AI Shopping Guide agent."""
 
 import asyncio
+import json
 import logging
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
@@ -11,11 +13,6 @@ from pydantic import BaseModel
 
 from src.agent.agent import create_pick_agent
 from src.agent.stream.sse import _sse, stream_agent_response
-from src.agent.memory.redis_history import (
-    generate_session_id,
-    load_history,
-    save_history,
-)
 from src.memory.pipeline import MemoryPipeline
 from src.memory.user_control import MemoryControlHandler
 from src.memory.cold_start import ColdStartManager
@@ -30,6 +27,9 @@ _agent = None
 _pipeline: MemoryPipeline | None = None
 _retrieval_gateway: RetrievalGateway | None = None
 _prompt_builder = PromptBuilder()
+
+# Per-session round counter for memory extraction
+_round_tracker: dict[str, int] = {}
 
 
 def get_agent():
@@ -195,17 +195,6 @@ class ChatRequest(BaseModel):
 # ── Helpers ────────────────────────────────────────────────────────────
 
 
-async def _save_history_safe(agent, config: dict, session_id: str) -> None:
-    """将当前 agent 状态中的消息持久化到 Redis，失败时仅记录日志."""
-    try:
-        state = agent.get_state(config)
-        if state and state.values:
-            messages = state.values.get("messages", [])
-            await save_history(session_id, messages)
-    except Exception:
-        logger.exception("Failed to save history for session=%s", session_id)
-
-
 def _error_stream(message: str):
     """Helper to return an error SSE stream."""
     async def _gen():
@@ -231,17 +220,15 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
     7. 流结束后触发记忆提取（Plan B: 后台异步）
     8. 发送 done 事件（携带 session_id）
     """
-    session_id = request.session_id or generate_session_id()
+    session_id = request.session_id or f"pick_{uuid.uuid4().hex[:12]}"
     config = {"configurable": {"thread_id": session_id}}
 
-    # 避免消息重复
+    # PostgresSaver 自动恢复 checkpoint，无需手动 load_history
     existing_state = agent.get_state(config)
     is_new_session = not (existing_state and existing_state.values and existing_state.values.get("messages"))
 
-    if is_new_session:
-        history = await load_history(session_id)
-    else:
-        history = []
+    # 历史消息由 LangGraph checkpoint 管理，此处不再从 Redis 加载
+    history = []
 
     # 新会话时执行记忆检索 (Plan C)
     memory_context = ""
@@ -261,6 +248,7 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
             logger.exception("Retrieval failed, continuing without memories")
 
     async def _generate():
+        accumulated_text: list[str] = []
         async for sse_event in stream_agent_response(
             query=request.query,
             history=history,
@@ -268,17 +256,27 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
             config=config,
             memory_context=memory_context,
         ):
+            # Capture text tokens from SSE events for memory extraction
+            try:
+                data = json.loads(sse_event.removeprefix("data: ").strip())
+                if data.get("type") == "text" and data.get("content"):
+                    accumulated_text.append(data["content"])
+            except (json.JSONDecodeError, AttributeError):
+                pass
             yield sse_event
 
-        # 流结束后保存历史到 Redis + 触发记忆提取 (Plan B)
-        await _save_history_safe(agent, config, session_id)
+        # PostgresSaver 在 astream() 中自动持久化，无需手动 save_history
         if request.user_id:
+            # Track conversation round per session
+            round_idx = _round_tracker.get(session_id, 0) + 1
+            _round_tracker[session_id] = round_idx
+
             _trigger_memory_extraction(
                 user_id=request.user_id,
                 session_id=session_id,
                 user_message=request.query,
-                assistant_response="",  # TODO: collect from SSE stream
-                round_index=1,           # TODO: track conversation round
+                assistant_response="".join(accumulated_text),
+                round_index=round_idx,
             )
 
     return StreamingResponse(
@@ -306,12 +304,9 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
     interrupts = state.tasks[0].interrupts if state and state.tasks else []
 
     if not interrupts:
-        if state and state.values and state.values.get("messages"):
-            history = []
-            is_new = False
-        else:
-            history = await load_history(session_id)
-            is_new = True
+        # PostgresSaver checkpoint 已有完整状态，无需从 Redis 加载
+        history = []
+        is_new = not (state and state.values and state.values.get("messages"))
 
         memory_context = ""
         if is_new and _retrieval_gateway and request.user_id:

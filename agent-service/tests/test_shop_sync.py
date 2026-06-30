@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from milvus import SHOP_DESC
-from ingestion.shop_sync import (
+from src.storage.milvus_store import COLLECTION_SHOP_DESC
+from src.storage.shop_sync import (
     build_embedding_text,
     build_multimodal_input,
     embed_shop_multimodal,
@@ -19,7 +19,7 @@ class FakeMilvusClient:
         self.upserted: list[dict] = []
 
     def upsert(self, collection_name: str, data: list[dict]):
-        assert collection_name == SHOP_DESC
+        assert collection_name == COLLECTION_SHOP_DESC
         self.upserted.extend(data)
 
 

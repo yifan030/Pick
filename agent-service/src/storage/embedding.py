@@ -1,61 +1,81 @@
-"""Shared embedding interface — thin shim over ingestion embedding.
+"""Text embedding via OpenAI-compatible embedding API.
 
-All memory modules import embed_texts from here so the implementation
-can be swapped without touching every caller.
-
-Lazily loads the actual embedding function to avoid triggering pymilvus
-imports during test collection (ingestion.__init__ imports shop_sync
-which imports pymilvus).
+All memory modules and sync pipelines import ``embed_texts`` / ``embed_single``
+from here. Uses the same OpenAI-compatible client as chat, configurable via
+standard env vars. The default model is ``text-embedding-3-small``;
+product sync uses a separate multimodal embedding path (see ``shop_sync.py``).
 """
 
 from __future__ import annotations
 
-import importlib.util
-import sys
-from pathlib import Path
+import os
+import logging
+from openai import OpenAI
+
+logger = logging.getLogger("pick.storage.embedding")
+
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
+EMBEDDING_BASE_URL = os.environ.get("EMBEDDING_BASE_URL", None)
+EMBEDDING_API_KEY = os.environ.get("EMBEDDING_API_KEY", None)
+EMBEDDING_DIM = int(os.environ.get("EMBEDDING_DIM", "1024"))
+
+_client: OpenAI | None = None
+
+
+def _get_client() -> OpenAI:
+    """Lazy-init the embedding client (synchronous, non-streaming)."""
+    global _client
+    if _client is None:
+        _client = OpenAI(
+            base_url=EMBEDDING_BASE_URL or os.environ.get("LLM_BASE_URL"),
+            api_key=EMBEDDING_API_KEY or os.environ.get("LLM_API_KEY", "sk-placeholder"),
+        )
+    return _client
 
 
 def embed_texts(
     texts: list[str],
-    **kwargs,
+    *,
+    model: str | None = None,
+    dimensions: int | None = None,
 ) -> list[list[float]]:
-    """Embed a list of texts, delegating to src.ingestion.embedding.
+    """Embed a list of text strings via OpenAI-compatible embeddings API.
 
     Args:
-        texts: List of text strings to embed.
-        **kwargs: Additional keyword arguments for the embedding function.
+        texts: List of text strings to embed (max 2048 per call recommended).
+        model: Override the default embedding model.
+        dimensions: Override the output embedding dimensions.
 
     Returns:
-        List of embedding vectors.
+        List of embedding vectors, one per input text, preserving order.
     """
-    mod_key = "src.ingestion.embedding"
-    if mod_key not in sys.modules:
-        _lazy_load_embedding(mod_key)
-    return sys.modules[mod_key].embed_texts(texts, **kwargs)
+    if not texts:
+        return []
 
+    client = _get_client()
+    model = model or EMBEDDING_MODEL
+    dims = dimensions or EMBEDDING_DIM
 
-def _lazy_load_embedding(mod_key: str) -> None:
-    """Load src.ingestion.embedding directly via file path, bypassing __init__.py."""
-    spec = importlib.util.spec_from_file_location(
-        mod_key,
-        Path(__file__).resolve().parent.parent / "ingestion" / "embedding.py",
-    )
-    if spec is None or spec.loader is None:
-        raise ImportError("Cannot load src.ingestion.embedding")
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[mod_key] = mod
-    spec.loader.exec_module(mod)
+    try:
+        response = client.embeddings.create(
+            model=model,
+            input=texts,
+            dimensions=dims,
+        )
+    except Exception:
+        logger.exception("Embedding API call failed for %d texts", len(texts))
+        raise
+
+    sorted_data = sorted(response.data, key=lambda d: d.index)
+    return [d.embedding for d in sorted_data]
 
 
 def embed_single(text: str, **kwargs) -> list[float]:
     """Embed a single text string.
 
-    This is a thin wrapper around ``embed_texts`` that handles the
-    single-text case so callers don't need to wrap/unwrap lists.
-
     Args:
         text: A single text string to embed.
-        **kwargs: Additional keyword arguments for the embedding function.
+        **kwargs: Forwarded to ``embed_texts``.
 
     Returns:
         A single embedding vector.

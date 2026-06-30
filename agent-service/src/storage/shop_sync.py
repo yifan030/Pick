@@ -1,3 +1,9 @@
+"""Shop description sync: fetch from Java → embed → upsert to Milvus.
+
+Pulls shop data via Java sync API, generates multimodal embeddings (text + images)
+via a compatible API, and upserts into the ``collection_shop_desc`` Milvus collection.
+"""
+
 import base64
 import json
 import os
@@ -7,7 +13,7 @@ from pathlib import Path
 import httpx
 from pymilvus import MilvusClient
 
-from src.milvus import SHOP_DESC
+from src.storage.milvus_store import COLLECTION_SHOP_DESC, EMBEDDING_DIM, HNSW_PARAMS
 
 BATCH_SIZE = 50
 CONTENT_TYPE = "shop_description"
@@ -175,9 +181,68 @@ def sync_shop_desc(
     records = [to_milvus_record(shop, embed_shop(shop)) for shop in shops]
 
     for i in range(0, len(records), batch_size):
-        milvus_client.upsert(collection_name=SHOP_DESC, data=records[i : i + batch_size])
+        milvus_client.upsert(collection_name=COLLECTION_SHOP_DESC, data=records[i : i + batch_size])
 
     return len(shops)
+
+
+def _init_product_milvus(host: str, port: int, dim: int) -> MilvusClient:
+    """Create a MilvusClient and ensure product collections exist."""
+    from src.storage.milvus_store import COLLECTION_SHOP_DESC, COLLECTION_USER_NOTE
+
+    client = MilvusClient(uri=f"http://{host}:{port}")
+
+    for name, schema_builder in [
+        (COLLECTION_SHOP_DESC, _make_shop_desc_schema),
+        (COLLECTION_USER_NOTE, _make_user_note_schema),
+    ]:
+        if client.has_collection(name):
+            continue
+        schema = schema_builder(dim)
+        index_params = client.prepare_index_params()
+        index_params.add_index(
+            field_name="embedding",
+            index_type="HNSW",
+            metric_type="COSINE",
+            params=HNSW_PARAMS,
+        )
+        client.create_collection(
+            collection_name=name,
+            schema=schema,
+            index_params=index_params,
+        )
+
+    return client
+
+
+def _make_shop_desc_schema(dim: int):
+    from pymilvus import DataType
+    schema = MilvusClient.create_schema()
+    schema.add_field("id", DataType.VARCHAR, max_length=128, is_primary=True)
+    schema.add_field("embedding", DataType.FLOAT_VECTOR, dim=dim)
+    schema.add_field("shop_id", DataType.INT64)
+    schema.add_field("area", DataType.VARCHAR, max_length=256)
+    schema.add_field("longitude", DataType.DOUBLE)
+    schema.add_field("latitude", DataType.DOUBLE)
+    schema.add_field("avg_price", DataType.INT64)
+    schema.add_field("type", DataType.VARCHAR, max_length=128)
+    schema.add_field("sub_type", DataType.VARCHAR, max_length=128)
+    schema.add_field("score", DataType.DOUBLE)
+    schema.add_field("open_hours", DataType.VARCHAR, max_length=512)
+    schema.add_field("tags", DataType.VARCHAR, max_length=2048)
+    schema.add_field("content_type", DataType.VARCHAR, max_length=64)
+    return schema
+
+
+def _make_user_note_schema(dim: int):
+    from pymilvus import DataType
+    schema = MilvusClient.create_schema()
+    schema.add_field("id", DataType.VARCHAR, max_length=128, is_primary=True)
+    schema.add_field("embedding", DataType.FLOAT_VECTOR, dim=dim)
+    schema.add_field("shop_id", DataType.INT64)
+    schema.add_field("user_nickname", DataType.VARCHAR, max_length=256)
+    schema.add_field("content_type", DataType.VARCHAR, max_length=64)
+    return schema
 
 
 def run_full_shop_desc_sync(
@@ -204,9 +269,7 @@ def run_full_shop_desc_sync(
     )
     image_base_path = image_base_path or os.environ.get("IMAGE_BASE_PATH", "")
 
-    from milvus import init
-
-    milvus_client = init(embedding_dim, host=milvus_host, port=milvus_port)
+    milvus_client = _init_product_milvus(embedding_dim, host=milvus_host, port=milvus_port)
 
     def embed(shop: dict) -> list[float]:
         return embed_shop_multimodal(
@@ -240,5 +303,4 @@ def _parse_json_list(value) -> list[str]:
 
 if __name__ == "__main__":
     synced = run_full_shop_desc_sync()
-    print(f"synced {synced} shops to {SHOP_DESC}")
-
+    print(f"synced {synced} shops to {COLLECTION_SHOP_DESC}")

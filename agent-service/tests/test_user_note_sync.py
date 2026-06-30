@@ -3,13 +3,13 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 
-from ingestion.user_note_sync import (
+from src.storage.user_note_sync import (
     build_embedding_text,
     fetch_blogs_from_java,
     run_full_sync,
     to_milvus_row,
 )
-from milvus import USER_NOTE
+from src.storage.milvus_store import COLLECTION_USER_NOTE
 
 
 class TestBuildEmbeddingText:
@@ -84,7 +84,7 @@ class TestRunFullSync:
         embed_texts.assert_called_once()
         milvus_client.upsert.assert_called_once()
         call = milvus_client.upsert.call_args
-        assert call.kwargs["collection_name"] == USER_NOTE
+        assert call.kwargs["collection_name"] == COLLECTION_USER_NOTE
         rows = call.kwargs["data"]
         assert len(rows) == 2
         assert {row["id"] for row in rows} == {"note_4", "note_5"}

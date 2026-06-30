@@ -1,6 +1,12 @@
-"""Storage layer: data models, embedding, and database client interfaces.
+"""Storage layer: data models, embedding, database clients, and data sync.
 
-These types are used by both Plan B (memory write pipeline) and Plan C (memory read pipeline).
+This module provides:
+- Data models for all memory types (Profile atoms, Events, Sessions, AgentCases)
+- Embedding client (text + multimodal)
+- Neo4j client (profile CRUD + entity graph)
+- Milvus memory store (collections + search)
+- Postgres checkpoint saver
+- Data sync pipelines (shop desc, user notes from Java)
 """
 
 from src.storage.models import (
@@ -31,7 +37,10 @@ from src.storage.models import (
     DELTA_EXPIRE,
 )
 
+from src.storage.embedding import embed_texts, embed_single
+
 __all__ = [
+    # Models
     "ProfileBase",
     "MemoryEvent",
     "TastePreference",
@@ -52,4 +61,7 @@ __all__ = [
     "DELTA_MERGE",
     "DELTA_NOCHANGE",
     "DELTA_EXPIRE",
+    # Embedding
+    "embed_texts",
+    "embed_single",
 ]

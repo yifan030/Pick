@@ -21,7 +21,12 @@ COLLECTION_USER_EVENT = "user_event"
 COLLECTION_USER_SESSION = "user_session"
 COLLECTION_AGENT_CASE = "agent_case"
 
+# Product RAG collections (shop descriptions, user blog notes)
+COLLECTION_SHOP_DESC = "collection_shop_desc"
+COLLECTION_USER_NOTE = "collection_user_note"
+
 ALL_COLLECTIONS = [COLLECTION_USER_EVENT, COLLECTION_USER_SESSION, COLLECTION_AGENT_CASE]
+PRODUCT_COLLECTIONS = [COLLECTION_SHOP_DESC, COLLECTION_USER_NOTE]
 
 # ── Embedding Config ──────────────────────────────────────────────────
 
@@ -276,6 +281,32 @@ class MilvusMemoryStore:
             filter=filter_expr,
         )
 
+    # ── Product Collection Management ──────────────────────────────
+
+    def create_product_collections(self) -> list[str]:
+        """Create product RAG collections (shop_desc, user_note) if absent."""
+        schemas = {
+            COLLECTION_SHOP_DESC: _make_shop_desc_schema(self._dim),
+            COLLECTION_USER_NOTE: _make_user_note_schema(self._dim),
+        }
+        created = []
+        for name, fields in schemas.items():
+            if self.client.has_collection(name):
+                created.append(name)
+                continue
+            self.client.create_collection(
+                collection_name=name,
+                schema=fields,
+            )
+            self.client.create_index(
+                collection_name=name,
+                index_params=_dense_index_params(),
+            )
+            self.client.load_collection(name)
+            logger.info("Created product collection %s", name)
+            created.append(name)
+        return created
+
     def delete_expired(self, collection: str) -> int:
         """Delete all expired entities. Returns count deleted."""
         now = int(_time_module.time())
@@ -286,3 +317,36 @@ class MilvusMemoryStore:
             filter=filter_expr,
         )
         return 0  # Milvus doesn't return delete count
+
+
+# ── Product Collection Schemas ────────────────────────────────────────
+
+
+def _make_shop_desc_schema(dim: int) -> list[dict]:
+    """Schema for collection_shop_desc (product RAG)."""
+    return [
+        {"name": "id", "dtype": DataType.VARCHAR, "is_primary": True, "max_length": 128},
+        {"name": "embedding", "dtype": DataType.FLOAT_VECTOR, "dim": dim},
+        {"name": "shop_id", "dtype": DataType.INT64},
+        {"name": "area", "dtype": DataType.VARCHAR, "max_length": 256},
+        {"name": "longitude", "dtype": DataType.DOUBLE},
+        {"name": "latitude", "dtype": DataType.DOUBLE},
+        {"name": "avg_price", "dtype": DataType.INT64},
+        {"name": "type", "dtype": DataType.VARCHAR, "max_length": 128},
+        {"name": "sub_type", "dtype": DataType.VARCHAR, "max_length": 128},
+        {"name": "score", "dtype": DataType.DOUBLE},
+        {"name": "open_hours", "dtype": DataType.VARCHAR, "max_length": 512},
+        {"name": "tags", "dtype": DataType.VARCHAR, "max_length": 2048},
+        {"name": "content_type", "dtype": DataType.VARCHAR, "max_length": 64},
+    ]
+
+
+def _make_user_note_schema(dim: int) -> list[dict]:
+    """Schema for collection_user_note (user blog notes RAG)."""
+    return [
+        {"name": "id", "dtype": DataType.VARCHAR, "is_primary": True, "max_length": 128},
+        {"name": "embedding", "dtype": DataType.FLOAT_VECTOR, "dim": dim},
+        {"name": "shop_id", "dtype": DataType.INT64},
+        {"name": "user_nickname", "dtype": DataType.VARCHAR, "max_length": 256},
+        {"name": "content_type", "dtype": DataType.VARCHAR, "max_length": 64},
+    ]

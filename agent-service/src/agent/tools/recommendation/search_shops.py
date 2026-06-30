@@ -11,7 +11,7 @@ from src.agent.services.milvus import (
     search_shop_desc,
     search_user_note,
 )
-from src.ingestion.embedding import embed_texts
+from src.storage.embedding import embed_texts
 from src.agent.stream.events import build_shop_card_event, generate_trace_id
 
 logger = logging.getLogger("pick.tools.recommendation")
