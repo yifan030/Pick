@@ -2,9 +2,23 @@ import sys
 from pathlib import Path
 
 import pytest
-from pymilvus import MilvusClient
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# pymilvus/numpy may not be compatible in all environments.
+# Raise SkipModule for tests that need it when the import fails.
+try:
+    from pymilvus import MilvusClient as _MilvusClient
+    _MILVUS_AVAILABLE = True
+except ImportError:
+    _MilvusClient = None  # noqa: F811
+    _MILVUS_AVAILABLE = False
+MilvusClient = _MilvusClient  # noqa: F811
+
+requires_milvus = pytest.mark.skipif(
+    not _MILVUS_AVAILABLE,
+    reason="pymilvus/numpy not available in this environment",
+)
 
 COLLECTION_SHOP_DESC = "collection_shop_desc"
 COLLECTION_USER_NOTE = "collection_user_note"
