@@ -11,6 +11,13 @@ from src.storage.embedding import embed_single
 
 logger = logging.getLogger("pick.retrieval.semantic")
 
+# ── Helpers ────────────────────────────────────────────────────────────
+
+
+def _escape_milvus_string(value: str) -> str:
+    """Escape a string value for use in a Milvus filter expression."""
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
 # ── Collection search config ──────────────────────────────────────────
 
 COLLECTION_SEARCH_CONFIG = {
@@ -49,7 +56,7 @@ class SemanticSearch:
             collections = list(COLLECTION_SEARCH_CONFIG.keys())
 
         # Build base filter
-        base_filter = f'user_id == "{user_id}"'
+        base_filter = f'user_id == "{_escape_milvus_string(user_id)}"'
         if filter_expr:
             base_filter = f"({base_filter}) and ({filter_expr})"
 

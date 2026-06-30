@@ -43,8 +43,26 @@ try:
 except ModuleNotFoundError:
     ConsistencyChecker = None  # type: ignore
 
+try:
+    from src.retrieval.semantic_search import SemanticSearch  # noqa: F401
+except ModuleNotFoundError:
+    SemanticSearch = None  # type: ignore
+
+try:
+    from src.retrieval.bm25_search import BM25Search  # noqa: F401
+except ModuleNotFoundError:
+    BM25Search = None  # type: ignore
+
+try:
+    from src.retrieval.entity_boost import EntityBoost  # noqa: F401
+except ModuleNotFoundError:
+    EntityBoost = None  # type: ignore
+
 __all__ = [
     "RetrievalGateway",
+    "SemanticSearch",
+    "BM25Search",
+    "EntityBoost",
     "ScoreNormalizer",
     "RankFusion",
     "PromptBuilder",

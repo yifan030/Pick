@@ -16,6 +16,13 @@ import logging
 
 logger = logging.getLogger("pick.retrieval.bm25")
 
+# ── Helpers ────────────────────────────────────────────────────────────
+
+
+def _escape_milvus_string(value: str) -> str:
+    """Escape a string value for use in a Milvus filter expression."""
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
 COLLECTION_SEARCH_CONFIG = {
     "user_event": {"top_k": 20, "output_fields": ["id", "event_type", "description", "created_at"]},
     "user_session": {"top_k": 10, "output_fields": ["id", "summary", "key_shops", "intent", "is_complete", "created_at"]},
@@ -55,9 +62,12 @@ class BM25Search:
         if collections is None:
             collections = list(COLLECTION_SEARCH_CONFIG.keys())
 
-        base_filter = f'user_id == "{user_id}"'
+        base_filter = f'user_id == "{_escape_milvus_string(user_id)}"'
         if filter_expr:
             base_filter = f"({base_filter}) and ({filter_expr})"
+
+        # Session search: prefer completed sessions
+        session_filter = f"({base_filter}) and (is_complete == true)"
 
         # For BM25, the sparse vector embedding is handled by Milvus
         # server-side. We pass an empty sparse vector.
@@ -67,19 +77,20 @@ class BM25Search:
         results = {}
         for coll in collections:
             config = COLLECTION_SEARCH_CONFIG.get(coll, {"top_k": 20, "output_fields": ["id", "description"]})
+            search_filter = session_filter if coll == "user_session" else base_filter
 
             try:
                 hits = self._milvus.search_sparse(
                     collection=coll,
                     sparse_vector=empty_sparse,
-                    filter_expr=base_filter,
+                    filter_expr=search_filter,
                     top_k=config["top_k"],
                     output_fields=config["output_fields"],
                 )
                 results[coll] = hits
                 logger.debug("BM25 search %s: %d results", coll, len(hits))
-            except Exception:
-                logger.debug("BM25 search not available for %s (may need Milvus 2.4+ BM25 function)", coll)
+            except Exception as e:
+                logger.warning("BM25 search failed for %s: %s", coll, e)
                 results[coll] = []
 
         return results

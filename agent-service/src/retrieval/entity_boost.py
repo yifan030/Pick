@@ -79,14 +79,14 @@ class EntityBoost:
         # 2. Get all profiles for system prompt injection
         profiles = []
         try:
-            profiles = self._neo4j.read_profiles(user_id)
+            profiles = await self._neo4j.read_profiles(user_id)
         except Exception:
             logger.exception("Failed to read profiles for prompt injection")
 
         # 3. Get hard constraints (always injected)
         hard_constraints = []
         try:
-            hard_constraints = self._neo4j.get_hard_constraints(user_id)
+            hard_constraints = await self._neo4j.get_hard_constraints(user_id)
         except Exception:
             logger.exception("Failed to read hard constraints")
 
