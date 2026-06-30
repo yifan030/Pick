@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -111,20 +111,12 @@ class TestFetchBlogsFromJava:
             },
             request=httpx.Request("GET", "http://localhost:8085/api/sync/blogs"),
         )
-        http_client = MagicMock()
-        http_client.get.return_value = response
+        fake_client = MagicMock()
+        fake_client.get.return_value = response
 
-        blogs = fetch_blogs_from_java(
-            since=0,
-            base_url="http://localhost:8085",
-            internal_token="secret",
-            http_client=http_client,
-        )
+        with patch("src.storage.user_note_sync.get_java_client", return_value=fake_client):
+            blogs = fetch_blogs_from_java(since=0)
 
         assert len(blogs) == 1
         assert blogs[0]["blogId"] == 4
-        http_client.get.assert_called_once_with(
-            "http://localhost:8085/api/sync/blogs",
-            headers={"X-Internal-Token": "secret"},
-            params={"since": 0},
-        )
+        fake_client.get.assert_called_once_with("/api/sync/blogs", params={"since": 0})

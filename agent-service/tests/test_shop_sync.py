@@ -125,26 +125,24 @@ class TestSyncShopDesc:
 
 class TestFetchShops:
     def test_fetch_shops_calls_sync_endpoint_and_returns_data(self):
-        import httpx
+        from unittest.mock import MagicMock, patch
 
-        def handler(request: httpx.Request) -> httpx.Response:
-            assert request.url.path == "/api/sync/shops"
-            assert request.url.params["since"] == "0"
-            assert request.headers["X-Internal-Token"] == "secret"
-            return httpx.Response(
-                200,
-                json={
-                    "success": True,
-                    "data": [sample_shop(1)],
-                },
-            )
+        fake_client = MagicMock()
+        fake_client.get.return_value = httpx.Response(
+            200,
+            json={
+                "success": True,
+                "data": [sample_shop(1)],
+            },
+            request=httpx.Request("GET", "http://localhost:8085/api/sync/shops"),
+        )
 
-        transport = httpx.MockTransport(handler)
-        with httpx.Client(transport=transport, base_url="http://java") as client:
-            shops = fetch_shops("http://java", "secret", since=0, client=client)
+        with patch("src.storage.shop_sync.get_java_client", return_value=fake_client):
+            shops = fetch_shops(since=0)
 
         assert len(shops) == 1
         assert shops[0]["shopId"] == 1
+        fake_client.get.assert_called_once_with("/api/sync/shops", params={"since": 0})
 
 
 class TestEmbedShopMultimodal:

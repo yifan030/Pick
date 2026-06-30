@@ -13,7 +13,9 @@ from pathlib import Path
 import httpx
 from pymilvus import MilvusClient
 
+from src.agent.services.java_client import get_java_client, retry_on_server_error
 from src.storage.milvus_store import COLLECTION_SHOP_DESC, EMBEDDING_DIM, HNSW_PARAMS
+from src.storage.sync_cursor import SyncCursor
 
 BATCH_SIZE = 50
 CONTENT_TYPE = "shop_description"
@@ -98,29 +100,15 @@ def to_milvus_record(shop: dict, embedding: list[float]) -> dict:
     }
 
 
-def fetch_shops(
-    base_url: str,
-    internal_token: str,
-    since: int = 0,
-    client: httpx.Client | None = None,
-) -> list[dict]:
-    url = f"{base_url.rstrip('/')}/api/sync/shops"
-    headers = {"X-Internal-Token": internal_token}
-    params = {"since": since}
-
-    if client is None:
-        with httpx.Client(timeout=60.0) as http:
-            response = http.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            payload = response.json()
-    else:
-        response = client.get(url, headers=headers, params=params)
-        response.raise_for_status()
-        payload = response.json()
-
+@retry_on_server_error()
+def fetch_shops(since: int = 0) -> list[dict]:
+    """Fetch shops from Java sync API. Uses shared connection pool."""
+    client = get_java_client(timeout=60.0)
+    response = client.get("/api/sync/shops", params={"since": since})
+    response.raise_for_status()
+    payload = response.json()
     if not payload.get("success", True):
         raise RuntimeError(f"shop sync failed: {payload}")
-
     return payload.get("data") or []
 
 
@@ -247,8 +235,6 @@ def _make_user_note_schema(dim: int):
 
 def run_full_shop_desc_sync(
     *,
-    java_base_url: str | None = None,
-    internal_token: str | None = None,
     milvus_host: str | None = None,
     milvus_port: int | None = None,
     embedding_dim: int | None = None,
@@ -256,9 +242,16 @@ def run_full_shop_desc_sync(
     embedding_base_url: str | None = None,
     embedding_model: str | None = None,
     image_base_path: str | Path | None = None,
+    full_resync: bool = False,
 ) -> int:
-    java_base_url = java_base_url or os.environ["JAVA_BASE_URL"]
-    internal_token = internal_token or os.environ["SYNC_INTERNAL_TOKEN"]
+    """Run shop description sync (incremental by default).
+
+    Uses SyncCursor to track the last successful sync timestamp.  Only shops
+    modified since the last run are fetched.  Pass ``full_resync=True`` to
+    re-sync everything.
+
+    Returns the number of shops synced.
+    """
     milvus_host = milvus_host or os.environ.get("MILVUS_HOST", "localhost")
     milvus_port = milvus_port or int(os.environ.get("MILVUS_PORT", "19530"))
     embedding_dim = embedding_dim or int(os.environ.get("EMBEDDING_DIM", "1024"))
@@ -268,6 +261,9 @@ def run_full_shop_desc_sync(
         "EMBEDDING_MODEL", "doubao-embedding-vision-250615"
     )
     image_base_path = image_base_path or os.environ.get("IMAGE_BASE_PATH", "")
+
+    cursor = SyncCursor("shop_desc")
+    since = 0 if full_resync else cursor.last_synced_at
 
     milvus_client = _init_product_milvus(embedding_dim, host=milvus_host, port=milvus_port)
 
@@ -280,11 +276,16 @@ def run_full_shop_desc_sync(
             image_base_path=image_base_path,
         )
 
-    return sync_shop_desc(
+    count = sync_shop_desc(
         milvus_client=milvus_client,
-        fetch_shops_fn=lambda: fetch_shops(java_base_url, internal_token, since=0),
+        fetch_shops_fn=lambda: fetch_shops(since=since),
         embed_shop=embed,
     )
+
+    if count > 0:
+        cursor.update()
+
+    return count
 
 
 def _parse_json_list(value) -> list[str]:

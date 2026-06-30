@@ -11,8 +11,10 @@ from typing import Any
 import httpx
 from pymilvus import MilvusClient
 
+from src.agent.services.java_client import get_java_client, retry_on_server_error
 from src.storage.milvus_store import COLLECTION_USER_NOTE, EMBEDDING_DIM, HNSW_PARAMS
 from src.storage.embedding import embed_texts as _default_embed_texts
+from src.storage.sync_cursor import SyncCursor
 
 BATCH_SIZE = 50
 CONTENT_TYPE = "user_note"
@@ -34,24 +36,11 @@ def to_milvus_row(blog: dict, embedding: list[float]) -> dict[str, Any]:
     }
 
 
-def fetch_blogs_from_java(
-    since: int = 0,
-    *,
-    base_url: str | None = None,
-    internal_token: str | None = None,
-    http_client: httpx.Client | None = None,
-) -> list[dict]:
-    base_url = base_url or os.environ.get("JAVA_API_BASE_URL", "http://localhost:8085")
-    internal_token = internal_token or os.environ.get("SYNC_INTERNAL_TOKEN", "")
-    url = f"{base_url.rstrip('/')}/api/sync/blogs"
-    headers = {"X-Internal-Token": internal_token}
-    params = {"since": since}
-
-    if http_client is not None:
-        response = http_client.get(url, headers=headers, params=params)
-    else:
-        with httpx.Client(timeout=60.0) as client:
-            response = client.get(url, headers=headers, params=params)
+@retry_on_server_error()
+def fetch_blogs_from_java(since: int = 0) -> list[dict]:
+    """Fetch blogs from Java sync API. Uses shared connection pool."""
+    client = get_java_client(timeout=60.0)
+    response = client.get("/api/sync/blogs", params={"since": since})
     response.raise_for_status()
     body = response.json()
     if not body.get("success"):
@@ -63,15 +52,9 @@ def run_full_sync(
     *,
     milvus_client: MilvusClient,
     embedding_dim: int,
-    fetch_blogs: Callable[[int], list[dict]] | None = None,
+    fetch_blogs: Callable[[int], list[dict]],
     embed_texts: Callable[[list[str]], list[list[float]]] | None = None,
-    java_base_url: str | None = None,
-    internal_token: str | None = None,
 ) -> int:
-    if fetch_blogs is None:
-        fetch_blogs = lambda since: fetch_blogs_from_java(
-            since, base_url=java_base_url, internal_token=internal_token
-        )
     if embed_texts is None:
         embed_texts = _default_embed_texts
 
@@ -134,25 +117,38 @@ def _make_user_note_schema(dim: int):
 
 def run_full_user_note_sync(
     *,
-    java_base_url: str | None = None,
-    internal_token: str | None = None,
     milvus_host: str | None = None,
     milvus_port: int | None = None,
     embedding_dim: int | None = None,
+    full_resync: bool = False,
 ) -> int:
-    java_base_url = java_base_url or os.environ["JAVA_BASE_URL"]
-    internal_token = internal_token or os.environ["SYNC_INTERNAL_TOKEN"]
+    """Run user note sync (incremental by default).
+
+    Uses SyncCursor to track the last successful sync timestamp.  Only blogs
+    modified since the last run are fetched.  Pass ``full_resync=True`` to
+    re-sync everything.
+
+    Returns the number of blogs synced.
+    """
     milvus_host = milvus_host or os.environ.get("MILVUS_HOST", "localhost")
     milvus_port = milvus_port or int(os.environ.get("MILVUS_PORT", "19530"))
     embedding_dim = embedding_dim or int(os.environ.get("EMBEDDING_DIM", "1024"))
 
+    cursor = SyncCursor("user_note")
+    since = 0 if full_resync else cursor.last_synced_at
+
     milvus_client = _init_product_milvus(host=milvus_host, port=milvus_port, dim=embedding_dim)
-    return run_full_sync(
+    count = run_full_sync(
         milvus_client=milvus_client,
         embedding_dim=embedding_dim,
-        java_base_url=java_base_url,
-        internal_token=internal_token,
+        fetch_blogs=lambda s: fetch_blogs_from_java(since=s),
+        embed_texts=_default_embed_texts,
     )
+
+    if count > 0:
+        cursor.update()
+
+    return count
 
 
 if __name__ == "__main__":
