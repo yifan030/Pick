@@ -11,6 +11,7 @@ from src.agent.services.milvus import (
     search_shop_desc,
     search_user_note,
 )
+from src.agent.stream.events import build_shop_card_event, generate_trace_id
 from src.ingestion.embedding import embed_texts
 
 logger = logging.getLogger("pick.tools.recommendation")
@@ -52,25 +53,10 @@ def _format_context_for_llm(merged: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _format_shop_card(entry: dict) -> dict:
-    """Format a single merged result as a shop_card SSE event."""
+def _build_shop_card(entry: dict, trace_id: str) -> dict:
+    """Format a single merged result as a shop_card SSE event with feedback tracking."""
     shop = entry.get("shop", {})
-    return {
-        "type": "shop_card",
-        "data": {
-            "shop_id": shop.get("shop_id"),
-            "name": shop.get("sub_type", shop.get("type", "")),
-            "area": shop.get("area", ""),
-            "score": shop.get("score", 0),
-            "avg_price": shop.get("avg_price", 0),
-            "type": shop.get("type", ""),
-            "sub_type": shop.get("sub_type", ""),
-            "tags": shop.get("tags", ""),
-            "open_hours": shop.get("open_hours", ""),
-            "longitude": shop.get("longitude"),
-            "latitude": shop.get("latitude"),
-        },
-    }
+    return build_shop_card_event(shop, trace_id=trace_id)
 
 
 @tool(response_format="content_and_artifact")
@@ -137,10 +123,11 @@ def search_shops(
 
     merged = merge_results(shop_hits, note_hits)
 
+    trace_id = generate_trace_id()
     try:
         writer = get_stream_writer()
         for entry in merged:
-            writer(_format_shop_card(entry))
+            writer(_build_shop_card(entry, trace_id))
     except RuntimeError:
         pass
 
