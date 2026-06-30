@@ -36,6 +36,11 @@ class ProfileBase:
     ttl_seconds: int | None = None  # None = permanent
     expires_at: int | None = None
 
+    def __post_init__(self):
+        """Derive expires_at from ttl_seconds when not explicitly set."""
+        if self.ttl_seconds is not None and self.expires_at is None:
+            self.expires_at = int(time.time()) + self.ttl_seconds
+
     def node_type(self) -> str:
         """Return the Neo4j-friendly node type name."""
         return type(self).__name__
@@ -149,6 +154,11 @@ class MemoryEvent:
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
     created_at: int = field(default_factory=lambda: int(time.time()))
     expires_at: int | None = None
+
+    def __post_init__(self):
+        """Derive expires_at from ttl_seconds when not explicitly set."""
+        if self.ttl_seconds is not None and self.expires_at is None:
+            self.expires_at = int(time.time()) + self.ttl_seconds
 
     def is_expired(self) -> bool:
         if self.expires_at is None:
