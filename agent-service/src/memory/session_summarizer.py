@@ -32,9 +32,9 @@ class SessionSummarizer:
 
     def __init__(self, model: Any = None, milvus_store=None):
         if model is None:
-            from src.agent.config import get_model
+            from src.agent.config import get_extractor_model
 
-            model = get_model()
+            model = get_extractor_model()
         self._model = model
         self._milvus = milvus_store
         # In-memory cache: session_id -> list of round_summary strings

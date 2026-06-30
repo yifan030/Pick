@@ -11,8 +11,8 @@ from src.agent.services.milvus import (
     search_shop_desc,
     search_user_note,
 )
-from src.agent.stream.events import build_shop_card_event, generate_trace_id
 from src.ingestion.embedding import embed_texts
+from src.agent.stream.events import build_shop_card_event, generate_trace_id
 
 logger = logging.getLogger("pick.tools.recommendation")
 
@@ -54,9 +54,9 @@ def _format_context_for_llm(merged: list[dict]) -> str:
 
 
 def _build_shop_card(entry: dict, trace_id: str) -> dict:
-    """Format a single merged result as a shop_card SSE event with feedback tracking."""
+    """Format a single merged result as a shop_card SSE event with trace_id."""
     shop = entry.get("shop", {})
-    return build_shop_card_event(shop, trace_id=trace_id)
+    return build_shop_card_event(shop=shop, trace_id=trace_id)
 
 
 @tool(response_format="content_and_artifact")

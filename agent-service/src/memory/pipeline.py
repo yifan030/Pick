@@ -33,8 +33,8 @@ class MemoryPipeline:
 
     def __init__(self, neo4j_client, milvus_store, model: Any = None):
         if model is None:
-            from src.agent.config import get_model
-            model = get_model()
+            from src.agent.config import get_extractor_model
+            model = get_extractor_model()
         self._neo4j = neo4j_client
         self._milvus = milvus_store
         self._model = model

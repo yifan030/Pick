@@ -16,12 +16,11 @@ from src.agent.memory.redis_history import (
     load_history,
     save_history,
 )
-from src.memory.cold_start import ColdStartManager
 from src.memory.pipeline import MemoryPipeline
+from src.memory.user_control import MemoryControlHandler
+from src.memory.cold_start import ColdStartManager
 from src.retrieval.gateway import RetrievalGateway
 from src.retrieval.prompt_builder import PromptBuilder
-from src.storage.neo4j_client import Neo4jClient
-from src.storage.milvus_store import MilvusMemoryStore
 from src.storage.postgres_saver import PostgresSaverManager
 
 logger = logging.getLogger("pick.main")
@@ -85,25 +84,6 @@ def _trigger_memory_extraction(
 async def lifespan(app: FastAPI):
     """FastAPI lifespan: 启动时初始化所有组件，关闭时清理资源."""
     global _agent, _pipeline, _retrieval_gateway
-    import os
-
-    # ── Storage Clients (Plan A) ──
-    neo4j = Neo4jClient(
-        uri=os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
-        user=os.environ.get("NEO4J_USER", "neo4j"),
-        password=os.environ.get("NEO4J_PASSWORD", "password"),
-    )
-    milvus = MilvusMemoryStore(
-        host=os.environ.get("MILVUS_HOST", "localhost"),
-        port=int(os.environ.get("MILVUS_PORT", "19530")),
-    )
-    try:
-        await neo4j.connect()
-        milvus.connect()
-        milvus.create_all_collections()
-        logger.info("Neo4j + Milvus connected")
-    except Exception:
-        logger.exception("Storage init failed — memory pipeline will be degraded")
 
     # ── PostgresSaver (Plan C) ──
     pg_manager = PostgresSaverManager()
@@ -115,22 +95,63 @@ async def lifespan(app: FastAPI):
     except Exception:
         logger.exception("PostgresSaver init failed, falling back to InMemorySaver")
 
+    # ── Neo4j Client (Plan A) ──
+    # TODO: Initialize Neo4jClient from Plan A (env vars NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
+    neo4j_client = None
+
+    # ── Cold Start Manager (Plan D) ──
+    cold_start_mgr = ColdStartManager(neo4j_client=neo4j_client, java_client=None)
+    app.state.cold_start_manager = cold_start_mgr
+    logger.info("ColdStartManager initialized (neo4j_client=%s)", "ready" if neo4j_client else "pending")
+
+    # ── Memory Control Handler (Plan D) ──
+    memory_control = MemoryControlHandler(neo4j_client=neo4j_client)
+    app.state.memory_control = memory_control
+    logger.info("MemoryControlHandler initialized (neo4j_client=%s)", "ready" if neo4j_client else "pending")
+
     # ── Agent ──
     logger.info("Initializing Pick AI agent...")
-    _agent = create_pick_agent(checkpointer=saver)
+    _agent = create_pick_agent(
+        checkpointer=saver,
+        memory_control_handler=memory_control,
+        neo4j_client=neo4j_client,
+    )
     logger.info("Agent initialized successfully")
 
-    # ── Cold Start Manager ──
-    cold_start_mgr = ColdStartManager(neo4j_client=neo4j)
-
-    # ── Retrieval Gateway (Plan C) + Memory Pipeline (Plan B) ──
+    # ── Retrieval Gateway (Plan C + D cold start) ──
     _retrieval_gateway = RetrievalGateway(
-        neo4j_client=neo4j,
-        milvus_store=milvus,
+        milvus_store=None,  # TODO: wire MilvusMemoryStore from Plan A
+        neo4j_client=neo4j_client,
         cold_start_manager=cold_start_mgr,
+    ) if neo4j_client else None
+    logger.info("RetrievalGateway initialized (cold_start=%s)", "ready" if cold_start_mgr else "pending")
+
+    # ── Memory Pipeline (Plan B) ──
+    _pipeline = MemoryPipeline(neo4j_client=neo4j_client, milvus_store=None)
+    logger.info("MemoryPipeline initialized (storage clients pending Plan A)")
+
+    # ── Feedback Consumer (Kafka) ──
+    import os
+    from src.retrieval.feedback_consumer import FeedbackConsumer
+
+    kafka_bootstrap = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+    feedback_topic = os.getenv("FEEDBACK_TOPIC", "user.behavior.feedback")
+
+    feedback_consumer = FeedbackConsumer(
+        neo4j_client=neo4j_client,
+        bootstrap_servers=kafka_bootstrap,
+        topic=feedback_topic,
     )
-    _pipeline = MemoryPipeline(neo4j_client=neo4j, milvus_store=milvus)
-    logger.info("ColdStartManager + RetrievalGateway + MemoryPipeline initialized")
+    try:
+        await feedback_consumer.start()
+        consume_task = asyncio.create_task(feedback_consumer.consume_loop())
+        app.state.feedback_consumer = feedback_consumer
+        app.state.feedback_task = consume_task
+        logger.info("FeedbackConsumer started on topic: %s", feedback_topic)
+    except Exception:
+        logger.warning("Failed to start FeedbackConsumer (Kafka may not be available): %s", exc_info=True)
+        app.state.feedback_consumer = None
+        app.state.feedback_task = None
 
     app.state.pg_manager = pg_manager
     yield
@@ -139,10 +160,17 @@ async def lifespan(app: FastAPI):
         await pg_manager.close()
     except Exception:
         logger.exception("Error closing PostgresSaver")
-    try:
-        await neo4j.close()
-    except Exception:
-        logger.exception("Error closing Neo4j")
+    # 优雅关闭 FeedbackConsumer
+    feedback_consumer = getattr(app.state, 'feedback_consumer', None)
+    if feedback_consumer:
+        await feedback_consumer.stop()
+    feedback_task = getattr(app.state, 'feedback_task', None)
+    if feedback_task and not feedback_task.done():
+        feedback_task.cancel()
+        try:
+            await feedback_task
+        except asyncio.CancelledError:
+            pass
     _agent = None
     _pipeline = None
     _retrieval_gateway = None
@@ -228,8 +256,6 @@ async def chat(request: ChatRequest, agent=Depends(get_agent)):
                 profiles=retrieval_result["profiles"],
                 hard_constraints=retrieval_result["hard_constraints"],
                 memories=retrieval_result["memories"],
-                cold_start=retrieval_result.get("cold_start", False),
-                onboarding_prompt=retrieval_result.get("onboarding_prompt", ""),
             )
         except Exception:
             logger.exception("Retrieval failed, continuing without memories")
@@ -299,8 +325,6 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
                     profiles=retrieval_result["profiles"],
                     hard_constraints=retrieval_result["hard_constraints"],
                     memories=retrieval_result["memories"],
-                    cold_start=retrieval_result.get("cold_start", False),
-                    onboarding_prompt=retrieval_result.get("onboarding_prompt", ""),
                 )
             except Exception:
                 logger.exception("Retrieval failed in resume")

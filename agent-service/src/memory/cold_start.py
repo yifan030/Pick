@@ -1,200 +1,273 @@
-from __future__ import annotations
+# src/memory/cold_start.py
+"""Cold start manager — imports user behavior data into profile atoms.
 
-"""ColdStartManager: detects new users and provides onboarding experience.
+When a user has no existing profiles (cold start), this module fetches
+historical behavior data (favorites, orders) from the Java backend and
+converts them into initial profile atoms with moderate confidence.
 
-When a user has no profile/memory data in Neo4j, the retrieval pipeline
-returns an onboarding prompt instead of empty search results. The manager
-also attempts to import user behavior data from the Java backend to warm
-the user's profile on first contact.
+This is triggered by MemoryControlHandler (D4) before the main write
+pipeline runs for a new user.
 """
 
+from __future__ import annotations
+
 import logging
-import uuid
-from datetime import datetime, timezone
+from typing import Any
+
+from src.storage.models import (
+    AreaPreference,
+    BudgetPreference,
+    CuisinePreference,
+)
 
 logger = logging.getLogger("pick.memory.cold_start")
 
-# ── Onboarding prompt ──────────────────────────────────────────────────
+# ── Onboarding constants ──────────────────────────────────────────────────
 
-ONBOARDING_PROMPT = """你是一个生活方式推荐助手，可以帮助用户发现好吃的、好玩的、优惠的。
+ONBOARDING_PROMPT = """## 冷启动 Onboarding
+检测到这是你第一次使用 AI 导购。为了给你更精准的推荐，我想了解两件事：
+1. **饮食偏好**：有什么忌口或偏好吗？（比如不吃辣、清真、素食…可以跳过）
+2. **人均预算**：大概多少？（比如 50 以内、50-100、100-200…可以跳过）
+直接告诉我即可，比如"不吃辣，预算 100 左右"。"""
 
-你好！我是你的 AI 导购助手。我注意到你是新用户，暂时还没有你的偏好和记忆数据。
-
-请告诉我：
-- 你喜欢什么类型的餐厅或美食？（比如火锅、日料、川菜）
-- 你的预算范围是多少？
-- 有没有特别的饮食要求？（比如清真、素食）
-- 你经常活动的商圈或区域？
-
-这样我就能为你提供更精准的推荐了！或者你也可以直接告诉我你想吃什么、想买什么，我会尽力帮你找到最好的选择。"""
+SKIP_PHRASES = [
+    "不用了",
+    "跳过",
+    "直接搜吧",
+    "不用",
+    "下次再说",
+    "不需要",
+    "随便推荐",
+]
 
 
 class ColdStartManager:
-    """Detects cold-start users and orchestrates onboarding.
+    """Manages cold-start profile initialization from behavioral data.
 
-    A user is "cold" when they have no active profiles AND no event
-    references in Neo4j.  On detection, the manager attempts to import
-    behavior data (orders, bookmarks) from the Java backend. If the
-    user remains cold after import, an onboarding prompt is returned.
+    Orchestrates the cold-start flow:
+      1. Check whether the user has existing profiles (is_cold_start).
+      2. Fetch historical behavior data from the Java backend (favorites + orders).
+      3. Convert behavior data into typed profile atoms with moderate confidence.
+      4. Write all profiles to Neo4j and return the count written.
+
+    Parameters
+    ----------
+    neo4j_client :
+        An async Neo4j client with ``read_profiles(user_id)`` and
+        ``write_profile(user_id, profile)`` methods.
+    java_client :
+        An optional async Java API client with ``get_user_favorites(user_id)``
+        and ``get_user_orders(user_id)`` methods.  When *None*,
+        ``fetch_behavior_data`` returns ``{}``.
     """
 
-    def __init__(self, neo4j_client, java_client=None):
-        """Initialize the cold start manager.
-
-        Args:
-            neo4j_client: Neo4jClient instance for profile/event queries.
-            java_client: Optional httpx.Client (or factory) for Java API calls.
-                         If None, uses ``get_java_client()`` from services.
-        """
+    def __init__(self, neo4j_client: Any = None, java_client: Any = None) -> None:
         self._neo4j = neo4j_client
         self._java_client = java_client
 
+    # ── Public API ────────────────────────────────────────────────────
+
     async def is_cold_start(self, user_id: str) -> bool:
-        """Check whether a user has no active data in Neo4j.
+        """Return True when the user has *no* existing profile atoms.
 
-        Considers both profiles (read_profiles) and event references.
-        Returns True if the user is cold (nothing found).
+        Delegates to :meth:`Neo4jClient.read_profiles` and returns
+        ``True`` when the result list is empty.
         """
-        try:
-            # 1. Check profile atoms
-            profiles = await self._neo4j.read_profiles(user_id)
-            if profiles:
-                return False
-
-            # 2. Check event references (imported behaviors, past turns)
-            event_count = await self._count_event_refs(user_id)
-            if event_count > 0:
-                return False
-
+        if self._neo4j is None:
+            logger.warning("Neo4j client not configured — assuming cold start")
             return True
+        profiles = await self._neo4j.read_profiles(user_id)
+        return len(profiles) == 0
+
+    async def fetch_behavior_data(self, user_id: str) -> dict:
+        """Fetch favorites and orders from the Java backend.
+
+        Returns a dict with keys ``"favorites"`` and ``"orders"`` (each a
+        list of dicts).  Returns ``{}`` when *java_client* is ``None``
+        or when the API calls fail.
+        """
+        if self._java_client is None:
+            return {}
+
+        result: dict[str, list[dict]] = {"favorites": [], "orders": []}
+        try:
+            favorites = await self._java_client.get_user_favorites(user_id)
+            result["favorites"] = favorites or []
         except Exception:
-            logger.exception("Cold start check failed for user=%s", user_id)
-            # On error, treat as cold for graceful degradation
-            return True
-
-    async def _count_event_refs(self, user_id: str) -> int:
-        """Count EventRef nodes for a user via direct Cypher query."""
-        query = """
-        MATCH (u:User {user_id: $user_id})-[:PERFORMED]->(er:EventRef)
-        RETURN count(er) AS cnt
-        """
-        async with self._neo4j.driver.session() as session:
-            result = await session.run(query, user_id=user_id)
-            record = await result.single()
-            return record["cnt"] if record else 0
-
-    async def run_behavior_import(self, user_id: str) -> bool:
-        """Attempt to import user behavior data from the Java backend.
-
-        Fetches order history and bookmarks, then creates EventRef
-        nodes linking the user to the entities they interacted with.
-        This warms the user from "cold" to "warm" so that subsequent
-        retrieval has context to work with.
-
-        Returns True if any data was imported.
-        """
-        imported = False
+            logger.exception("Failed to fetch favorites for user %s", user_id)
 
         try:
-            bookmarks = await self._fetch_bookmarks(user_id)
-            if bookmarks:
-                await self._ingest_bookmarks(user_id, bookmarks)
-                imported = True
-                logger.info(
-                    "Imported %d bookmarks for user=%s", len(bookmarks), user_id
-                )
+            orders = await self._java_client.get_user_orders(user_id)
+            result["orders"] = orders or []
         except Exception:
-            logger.exception("Bookmark import failed for user=%s", user_id)
+            logger.exception("Failed to fetch orders for user %s", user_id)
 
-        try:
-            orders = await self._fetch_orders(user_id)
-            if orders:
-                await self._ingest_orders(user_id, orders)
-                imported = True
-                logger.info(
-                    "Imported %d orders for user=%s", len(orders), user_id
+        return result
+
+    def build_profiles_from_behavior(
+        self,
+        user_id: str,
+        behavior_data: dict,
+    ) -> list:
+        """Convert behavior data dict into a list of profile atoms.
+
+        Each profile carries ``source="behavior_import"`` and a confidence
+        between 0.4 and 0.6, reflecting the heuristic nature of the data.
+
+        Rules
+        -----
+        * **CuisinePreference** — extracted from ``cuisine`` or
+          ``shop_type`` fields of favorites (confidence 0.5) and orders
+          (confidence 0.4).  Duplicates across both sources are deduplicated
+          (favorites take priority).
+        * **AreaPreference** — extracted from ``area`` fields with the
+          same confidence scheme as cuisine.
+        * **BudgetPreference** — computed as the average order price
+          +/-30 %, confidence 0.5.  Only created when at least one order
+          has a non-zero ``price``.
+        """
+        profiles: list = []
+
+        favorites = behavior_data.get("favorites", []) or []
+        orders = behavior_data.get("orders", []) or []
+
+        # ── CuisinePreference ─────────────────────────────────────────
+        seen_cuisines: set[str] = set()
+
+        for item in favorites:
+            cuisine = item.get("cuisine") or item.get("shop_type")
+            if cuisine and cuisine not in seen_cuisines:
+                seen_cuisines.add(cuisine)
+                p = CuisinePreference(
+                    user_id=user_id,
+                    cuisine=cuisine,
+                    confidence=0.5,
+                    weight=0.7,
                 )
-        except Exception:
-            logger.exception("Order import failed for user=%s", user_id)
+                p.source = "behavior_import"
+                profiles.append(p)
 
-        return imported
+        for item in orders:
+            cuisine = item.get("cuisine") or item.get("shop_type")
+            if cuisine and cuisine not in seen_cuisines:
+                seen_cuisines.add(cuisine)
+                p = CuisinePreference(
+                    user_id=user_id,
+                    cuisine=cuisine,
+                    confidence=0.4,
+                    weight=0.6,
+                )
+                p.source = "behavior_import"
+                profiles.append(p)
 
-    # ── Java backend fetch helpers ────────────────────────────────────
+        # ── AreaPreference ────────────────────────────────────────────
+        seen_areas: set[str] = set()
 
-    async def _fetch_bookmarks(self, user_id: str) -> list[dict]:
-        """Fetch user bookmarks from Java backend.
+        for item in favorites:
+            area = item.get("area")
+            if area and area not in seen_areas:
+                seen_areas.add(area)
+                p = AreaPreference(
+                    user_id=user_id,
+                    area=area,
+                    confidence=0.5,
+                    weight=0.7,
+                )
+                p.source = "behavior_import"
+                profiles.append(p)
 
-        Calls GET /api/bookmarks/internal/{userId}.
-        """
-        from src.agent.services.java_client import get_java_client
+        for item in orders:
+            area = item.get("area")
+            if area and area not in seen_areas:
+                seen_areas.add(area)
+                p = AreaPreference(
+                    user_id=user_id,
+                    area=area,
+                    confidence=0.4,
+                    weight=0.6,
+                )
+                p.source = "behavior_import"
+                profiles.append(p)
 
-        client_factory = self._java_client or get_java_client
-        with client_factory() as client:
-            response = client.get(f"/api/bookmarks/internal/{user_id}")
-            if response.status_code == 200:
-                data = response.json()
-                # Result<T> wrapper: {"success": true, "data": [...]}
-                if isinstance(data, dict) and data.get("success"):
-                    return data.get("data", [])
-                return data if isinstance(data, list) else []
-            logger.warning(
-                "Bookmark fetch returned %d for user=%s",
-                response.status_code, user_id,
+        # ── BudgetPreference (only from orders) ───────────────────────
+        prices = [
+            o["price"]
+            for o in orders
+            if isinstance(o.get("price"), (int, float)) and o["price"] > 0
+        ]
+        if prices:
+            avg_price = sum(prices) / len(prices)
+            bp = BudgetPreference(
+                user_id=user_id,
+                range_min=max(0, int(avg_price * 0.7)),
+                range_max=int(avg_price * 1.3),
+                confidence=0.5,
+                type="per_person",
             )
-            return []
+            bp.source = "behavior_import"
+            profiles.append(bp)
 
-    async def _fetch_orders(self, user_id: str) -> list[dict]:
-        """Fetch user order history from Java backend.
+        return profiles
 
-        Calls GET /api/orders/internal/user/{userId}.
+    async def run_behavior_import(self, user_id: str) -> int:
+        """Run the full cold-start import pipeline for *user_id*.
+
+        1. Fetch behavior data from the Java backend.
+        2. Convert it into profile atoms.
+        3. Write each atom to Neo4j, skipping failures per-profile.
+        4. Return the total number of profiles successfully written.
+
+        Returns 0 when the Neo4j client is not configured.
         """
-        from src.agent.services.java_client import get_java_client
+        if self._neo4j is None:
+            logger.warning("Neo4j client not configured — skipping behavior import")
+            return 0
 
-        client_factory = self._java_client or get_java_client
-        with client_factory() as client:
-            response = client.get(f"/api/orders/internal/user/{user_id}")
-            if response.status_code == 200:
-                data = response.json()
-                if isinstance(data, dict) and data.get("success"):
-                    return data.get("data", [])
-                return data if isinstance(data, list) else []
-            logger.warning(
-                "Order fetch returned %d for user=%s",
-                response.status_code, user_id,
-            )
-            return []
+        behavior_data = await self.fetch_behavior_data(user_id)
+        profiles = self.build_profiles_from_behavior(user_id, behavior_data)
 
-    # ── Ingestion helpers ─────────────────────────────────────────────
+        count = 0
+        for profile in profiles:
+            try:
+                await self._neo4j.write_profile(user_id, profile)
+                count += 1
+            except Exception:
+                logger.exception(
+                    "Failed to write %s for user %s",
+                    type(profile).__name__,
+                    user_id,
+                )
 
-    async def _ingest_bookmarks(self, user_id: str, bookmarks: list[dict]) -> None:
-        """Convert bookmark rows into EventRef nodes in Neo4j.
+        logger.info(
+            "Cold start: imported %d/%d profiles for user %s",
+            count,
+            len(profiles),
+            user_id,
+        )
+        return count
 
-        Each bookmark becomes an EventRef linking the user to a Shop
-        entity, giving the retrieval pipeline context for first-time users.
-        """
-        for bm in bookmarks[:20]:  # cap to avoid flooding
-            shop_id = bm.get("shop_id") or bm.get("shopId")
-            if shop_id is None:
-                continue
-            event_id = f"import_bm_{user_id}_{uuid.uuid4().hex[:8]}"
-            targets = [{"type": "Shop", "id": str(shop_id)}]
-            await self._neo4j.write_event_ref(user_id, event_id, targets)
+    # ── Onboarding helpers ───────────────────────────────────────────────
 
-    async def _ingest_orders(self, user_id: str, orders: list[dict]) -> None:
-        """Convert order rows into EventRef nodes in Neo4j.
-
-        Each order becomes an EventRef linking the user to a Shop entity.
-        Purchase signals are strong interest indicators.
-        """
-        for order in orders[:20]:  # cap to avoid flooding
-            shop_id = order.get("shop_id") or order.get("shopId")
-            if shop_id is None:
-                continue
-            event_id = f"import_ord_{user_id}_{uuid.uuid4().hex[:8]}"
-            targets = [{"type": "Shop", "id": str(shop_id)}]
-            await self._neo4j.write_event_ref(user_id, event_id, targets)
-
-    @property
-    def onboarding_prompt(self) -> str:
-        """Return the onboarding prompt for cold-start users."""
+    @staticmethod
+    def build_onboarding_prompt() -> str:
+        """Return the onboarding prompt shown to first-time users."""
         return ONBOARDING_PROMPT
+
+    @staticmethod
+    def is_skip_onboarding(user_message: str) -> bool:
+        """Return True when *user_message* contains any known skip phrase."""
+        msg = user_message.strip().lower()
+        for phrase in SKIP_PHRASES:
+            if phrase in msg:
+                return True
+        return False
+
+    @staticmethod
+    def get_first_reinforce_boost(profile: Any) -> float:
+        """Return the first-reinforce boost factor for *profile*.
+
+        Profiles sourced from behavior import receive a higher boost (0.2)
+        to accelerate convergence. All others use the default (0.1).
+        """
+        source = getattr(profile, "source", None)
+        return 0.2 if source == "behavior_import" else 0.1

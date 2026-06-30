@@ -8,7 +8,6 @@ All types are defined here so importers only need src.storage.models.
 
 from __future__ import annotations
 
-import json
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -36,8 +35,9 @@ class ProfileBase:
     updated_at: int = field(default_factory=lambda: int(time.time()))
     ttl_seconds: int | None = None  # None = permanent
     expires_at: int | None = None
-    # Populated by Neo4jClient on read for delete/update by elementId
-    element_id: str = ""
+    id: str = ""                      # Neo4j elementId
+    reinforce_count: int = 0
+    last_reinforced_at: int | None = None
 
     def __post_init__(self):
         """Derive expires_at from ttl_seconds when not explicitly set."""
@@ -67,7 +67,6 @@ class TastePreference(ProfileBase):
 
     property: str = ""
     value: str = ""          # "like" | "avoid"
-    reinforce_count: int = 0
 
 
 @dataclass
@@ -95,7 +94,6 @@ class CuisinePreference(ProfileBase):
 
     cuisine: str = ""
     weight: float = 0.7
-    reinforce_count: int = 0
 
 
 @dataclass
@@ -168,21 +166,6 @@ class MemoryEvent:
             return False
         return int(time.time()) >= self.expires_at
 
-    def to_milvus_dict(self) -> dict[str, Any]:
-        """Convert to a dict for MilvusMemoryStore.insert_event()."""
-        return {
-            "user_id": self.user_id,
-            "event_type": self.event_type,
-            "description": self.description,
-            "payload": json.dumps(self.payload, ensure_ascii=False) if self.payload else "{}",
-            "session_id": self.session_id,
-            "compressed": self.compressed,
-            "compressed_from": json.dumps(self.compressed_from, ensure_ascii=False) if self.compressed_from else "[]",
-            "ttl_seconds": self.ttl_seconds or 0,
-            "expires_at": self.expires_at or 0,
-            "created_at": self.created_at,
-        }
-
 
 # ── Delta Operation ──────────────────────────────────────────────────────
 
@@ -199,7 +182,6 @@ class DeltaOperation:
     old_value: AnyProfile | None = None
     new_value: AnyProfile | None = None
     reason: str = ""
-    agent_role: str = "main"  # "main" | "supervisor" | "worker:restaurant" | ...
 
     def to_audit_dict(self) -> dict:
         """Convert to a dict suitable for AuditLogger JSONL output."""
@@ -208,7 +190,6 @@ class DeltaOperation:
             "target_type": self.target_type,
             "target_id": self.target_id,
             "reason": self.reason,
-            "agent_role": self.agent_role,
         }
         if self.old_value is not None:
             d["old_value"] = {
@@ -239,19 +220,6 @@ class SessionSummary:
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
     created_at: int = field(default_factory=lambda: int(time.time()))
 
-    def to_milvus_dict(self) -> dict[str, Any]:
-        """Convert to a dict for MilvusMemoryStore.insert_session()."""
-        return {
-            "user_id": self.user_id,
-            "summary": self.summary,
-            "key_shops": json.dumps(self.key_shops, ensure_ascii=False) if self.key_shops else "[]",
-            "key_areas": json.dumps(self.key_areas, ensure_ascii=False) if self.key_areas else "[]",
-            "intent": self.intent,
-            "is_complete": self.is_complete,
-            "created_at": self.created_at,
-            "updated_at": int(time.time()),
-        }
-
 
 # ── Agent Case ───────────────────────────────────────────────────────────
 
@@ -263,7 +231,7 @@ class AgentCase:
     """
 
     user_id: str = ""
-    case_type: str = "recommendation"  # "recommendation" | "purchase_flow" | "error_recovery" | "user_handling" | "orchestration"
+    case_type: str = "recommendation"
     description: str = ""
     context: dict[str, Any] = field(default_factory=dict)
     action: str = ""
@@ -274,18 +242,3 @@ class AgentCase:
     embedding: list[float] | None = None
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
     created_at: int = field(default_factory=lambda: int(time.time()))
-
-    def to_milvus_dict(self) -> dict[str, Any]:
-        """Convert to a dict for MilvusMemoryStore.insert_agent_case()."""
-        return {
-            "user_id": self.user_id,
-            "case_type": self.case_type,
-            "description": self.description,
-            "context": json.dumps(self.context, ensure_ascii=False) if self.context else "{}",
-            "action": self.action,
-            "outcome": self.outcome,
-            "outcome_reason": self.outcome_reason,
-            "lesson": self.lesson,
-            "created_at": self.created_at,
-            "ttl_seconds": self.ttl_seconds,
-        }

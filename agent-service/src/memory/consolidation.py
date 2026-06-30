@@ -27,9 +27,9 @@ class ConsolidationJob:
     def __init__(self, neo4j_client, model: Any = None, embed_fn=None):
         self._neo4j = neo4j_client
         if model is None:
-            from src.agent.config import get_model
+            from src.agent.config import get_extractor_model
 
-            model = get_model()
+            model = get_extractor_model()
         self._model = model
         if embed_fn is None:
             from src.storage.embedding import embed_texts

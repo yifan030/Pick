@@ -52,6 +52,8 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     listener:
       ack-mode: manual_immediate
+    topics:
+      user-behavior-feedback: user.behavior.feedback
 mybatis-plus:
   type-aliases-package: org.xu.entity # 别名扫描包
   configuration:

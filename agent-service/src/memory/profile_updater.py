@@ -36,6 +36,7 @@ from src.storage.models import (
     ConstraintPreference,
 )
 from src.memory.prompts import PROFILE_UPDATE_PROMPT
+from src.memory.feedback_fallback import detect_implicit_feedback
 
 logger = logging.getLogger("pick.memory.profile_updater")
 
@@ -65,9 +66,9 @@ class ProfileUpdater:
             neo4j_client: Neo4j storage client with write_profile/update_profile/delete_profile.
         """
         if model is None:
-            from src.agent.config import get_model
+            from src.agent.config import get_extractor_model
 
-            model = get_model()
+            model = get_extractor_model()
         self._model = model
         self._neo4j = neo4j_client
 
@@ -96,6 +97,18 @@ class ProfileUpdater:
 
         profiles_text = self._format_profiles(existing_profiles)
         events_text = self._format_events(events)
+
+        # 隐式反馈检测（Kafka 就绪前的降级方案）
+        feedback_signals = detect_implicit_feedback(user_message)
+        if feedback_signals:
+            feedback_lines = []
+            for sig in feedback_signals:
+                feedback_lines.append(f"反馈: {sig['type']}({sig['detail']})")
+            feedback_text = "\n".join(feedback_lines)
+            if events_text == "(无)":
+                events_text = feedback_text
+            else:
+                events_text += "\n" + feedback_text
 
         prompt = PROFILE_UPDATE_PROMPT.format(
             existing_profiles=profiles_text,

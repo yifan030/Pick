@@ -17,18 +17,6 @@ logger = logging.getLogger("pick.retrieval.prompt_builder")
 class PromptBuilder:
     """Builds the memory-augmented section of the system prompt."""
 
-    # ── Default onboarding prompt (used as fallback) ───────────────
-    _DEFAULT_ONBOARDING = (
-        "## 用户记忆\n\n"
-        "你好！我注意到你是新用户，暂时还没有你的偏好和记忆数据。\n\n"
-        "请告诉我你喜欢什么类型的餐厅、你的预算范围、有没有特殊的饮食要求，"
-        "以及你经常活动的区域。这样我就能为你提供更精准的推荐了！\n"
-    )
-
-    @staticmethod
-    def _default_onboarding() -> str:
-        return PromptBuilder._DEFAULT_ONBOARDING
-
     def build(
         self,
         profiles: list[AnyProfile],
@@ -45,13 +33,12 @@ class PromptBuilder:
             hard_constraints: Hard constraint atoms (is_hard=true).
             memories: Fused memory results from RetrievalGateway.
             agent_cases: Optional agent case results.
-            cold_start: If True, return the onboarding prompt directly.
-            onboarding_prompt: The onboarding prompt text to use.
+            cold_start: If True, return onboarding prompt instead of memory context.
+            onboarding_prompt: The onboarding message to return when cold_start=True.
 
         Returns:
             A markdown-formatted string for injection into the system prompt.
         """
-        # ── Cold start: return onboarding prompt directly ──────────
         if cold_start:
             return onboarding_prompt or self._default_onboarding()
 
@@ -187,3 +174,21 @@ class PromptBuilder:
             if lesson:
                 lines.append(f"- {outcome_emoji} {lesson}")
         return "\n".join(lines)
+
+    @staticmethod
+    def _default_onboarding() -> str:
+        """Return a built-in default onboarding prompt (fallback)."""
+        return (
+            "## 冷启动 Onboarding\n\n"
+            "检测到这是你第一次使用 AI 导购。"
+            "为了给你更精准的推荐，"
+            "我想了解两件事：\n\n"
+            "1. **饮食偏好**："
+            "有什么忌口或偏好吗？"
+            "（比如不吃辣、清真、素食…可以跳过）\n"
+            "2. **人均预算**："
+            "大概多少？"
+            "（比如 50 以内、50-100、100-200…可以跳过）\n\n"
+            "直接告诉我即可，比如“不吃辣，"
+            "预算 100 左右”。"
+        )

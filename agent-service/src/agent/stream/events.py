@@ -1,4 +1,4 @@
-"""SSE event type constants and helpers for the Pick AI agent streaming protocol."""
+"""SSE event type constants for the Pick AI agent streaming protocol."""
 
 import time
 import uuid
@@ -9,30 +9,32 @@ SHOP_CARD = "shop_card"
 ERROR = "error"
 DONE = "done"
 STATUS = "status"
-# -- Feedback Tracking Helpers ------------------------------------------------
 
 
 def generate_trace_id() -> str:
-    """Generate a unique trace_id for recommendation tracking."""
+    """Generate a unique trace_id for recommendation tracking.
+
+    Format: trace_rec_{unix_timestamp}_{8_hex_chars}
+    Used by the feedback loop to reverse-lookup which Profile atoms
+    were referenced when a recommendation was made.
+    """
     return f"trace_rec_{int(time.time())}_{uuid.uuid4().hex[:8]}"
 
 
 def build_shop_card_event(
     shop: dict,
     trace_id: str = "",
-    referenced_profiles: list | None = None,
+    referenced_profiles: list[str] | None = None,
 ) -> dict:
     """Build a shop_card SSE event dict with feedback tracking fields.
 
     Args:
-        shop: The shop data dict to include in the event.
-        trace_id: Optional trace_id for feedback tracking.
-                  Auto-generated if not provided.
-        referenced_profiles: Optional list of Profile atom IDs that
-                             contributed to this recommendation.
+        shop: Full shop data dict from search results.
+        trace_id: Recommendation trace ID for feedback loop. Auto-generated if empty.
+        referenced_profiles: List of Profile atom IDs used for this recommendation.
 
     Returns:
-        An SSE event dict ready for JSON serialization.
+        Dict ready for SSE emission with type, shop, trace_id, referenced_profiles.
     """
     return {
         "type": "shop_card",
@@ -40,8 +42,6 @@ def build_shop_card_event(
         "trace_id": trace_id or generate_trace_id(),
         "referenced_profiles": referenced_profiles or [],
     }
-
-
 # Iteration 2: Order lifecycle
 ORDER_STATUS = "order_status"
 ORDER_LIST = "order_list"

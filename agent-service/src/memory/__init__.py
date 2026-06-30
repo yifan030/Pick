@@ -9,11 +9,12 @@ Public API:
 - AgentCaseExtractor: recommendation outcomes → agent patterns
 - ConsolidationJob: profile dedup scheduled task
 - CleanupJob: TTL expiry + event compression + anti-bloat
+- ColdStartManager: behavior data import for new users
 """
 
 from src.memory import prompts
 
-# Lazy imports for modules that don't exist yet (B2-B10)
+# Lazy imports for modules that don't exist yet (B2-B10 / D3)
 try:
     from src.memory.pipeline import MemoryPipeline
 except (ModuleNotFoundError, TypeError):
@@ -49,6 +50,11 @@ try:
 except (ModuleNotFoundError, TypeError):
     CleanupJob = None  # type: ignore
 
+try:
+    from src.memory.cold_start import ColdStartManager
+except (ModuleNotFoundError, TypeError):
+    ColdStartManager = None  # type: ignore
+
 __all__ = [
     "prompts",
     "MemoryPipeline",
@@ -58,4 +64,5 @@ __all__ = [
     "AgentCaseExtractor",
     "ConsolidationJob",
     "CleanupJob",
+    "ColdStartManager",
 ]

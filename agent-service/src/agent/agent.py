@@ -49,7 +49,9 @@ from src.agent.tools import (
     set_voucher_alert,
     queue_reservation,
     make_reservation,
+    create_memory_tools,
 )
+from src.memory.user_control import MemoryControlHandler
 
 logger = logging.getLogger("pick.agent")
 
@@ -201,12 +203,22 @@ def _classify_intent(query: str) -> str:
 # ── Graph Builder ────────────────────────────────────────────────────
 
 
-def create_pick_agent(checkpointer=None) -> "CompiledStateGraph":
+def create_pick_agent(
+    checkpointer=None,
+    memory_control_handler: MemoryControlHandler | None = None,
+    neo4j_client=None,
+) -> "CompiledStateGraph":
     """Build and compile the Pick AI Shopping Guide agent graph.
 
     Args:
         checkpointer: A LangGraph checkpointer instance.
                     如果为None，则降级使用InMemorySaver（非持久化）。
+        memory_control_handler: Optional MemoryControlHandler instance.
+            When provided together with neo4j_client, memory control
+            tools (view/delete/update/clear/ignore preferences) are
+            wired into every sub-agent.
+        neo4j_client: Neo4jClient instance required for memory tools.
+            Only used when memory_control_handler is also provided.
 
     The compiled graph exposes:
     - .astream(input, config)  → async streaming iterator
@@ -221,9 +233,39 @@ def create_pick_agent(checkpointer=None) -> "CompiledStateGraph":
 
     # ── Sub-agents ──────────────────────────────────────────────────
 
+    # Base tools per intent branch
+    chat_tools: list = []
+    recommend_tools = [
+        search_shops,
+        bookmark_shop,
+        list_bookmarks,
+        remove_bookmark,
+        queue_reservation,
+        make_reservation,
+    ]
+    purchase_tools = [
+        query_vouchers,
+        place_order,
+        check_order_status,
+        list_my_orders,
+        request_refund,
+        set_voucher_alert,
+    ]
+
+    # Wire memory control tools into all branches when handler + client are available
+    if memory_control_handler is not None and neo4j_client is not None:
+        memory_tools = create_memory_tools(memory_control_handler, neo4j_client)
+        chat_tools.extend(memory_tools)
+        recommend_tools.extend(memory_tools)
+        purchase_tools.extend(memory_tools)
+        logger.info(
+            "Memory control tools wired into agent (%d tools)",
+            len(memory_tools),
+        )
+
     chat_handler = create_agent(
         model=model,
-        tools=[],
+        tools=chat_tools,
         system_prompt=CHAT_SYSTEM_PROMPT,
         middleware=SHARED_MIDDLEWARE,
         name="chat_handler",
@@ -231,7 +273,7 @@ def create_pick_agent(checkpointer=None) -> "CompiledStateGraph":
 
     recommend_handler = create_agent(
         model=model,
-        tools=[search_shops, bookmark_shop, list_bookmarks, remove_bookmark, queue_reservation, make_reservation],
+        tools=recommend_tools,
         system_prompt=RECOMMEND_SYSTEM_PROMPT,
         middleware=SHARED_MIDDLEWARE,
         name="recommend_handler",
@@ -239,7 +281,7 @@ def create_pick_agent(checkpointer=None) -> "CompiledStateGraph":
 
     purchase_handler = create_agent(
         model=model,
-        tools=[query_vouchers, place_order, check_order_status, list_my_orders, request_refund, set_voucher_alert],
+        tools=purchase_tools,
         system_prompt=PURCHASE_SYSTEM_PROMPT,
         middleware=PURCHASE_MIDDLEWARE,
         name="purchase_handler",
