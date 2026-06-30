@@ -3,6 +3,8 @@
 Consolidated from src/ingestion/embedding.py. All plans use this single client.
 """
 
+from __future__ import annotations
+
 import os
 import logging
 from openai import OpenAI

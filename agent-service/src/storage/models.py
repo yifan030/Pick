@@ -9,10 +9,12 @@ Profile atoms live in Neo4j as labeled nodes.
 Events, Sessions, and AgentCases live in Milvus as vector-searchable documents.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field, asdict
 import json
 import time
-from typing import Any
+from typing import Any, Union
 
 
 # ── Delta Operation Constants ─────────────────────────────────────────
@@ -143,11 +145,11 @@ class ConstraintPreference(ProfileAtom):
 
 
 # Union type for any profile atom
-AnyProfile = (
-    TastePreference | DietaryPreference | BudgetPreference
-    | CuisinePreference | AreaPreference | ScenePreference
-    | ConstraintPreference
-)
+AnyProfile = Union[
+    TastePreference, DietaryPreference, BudgetPreference,
+    CuisinePreference, AreaPreference, ScenePreference,
+    ConstraintPreference,
+]
 
 
 # ── Memory Events (Milvus collection: user_event) ─────────────────────
