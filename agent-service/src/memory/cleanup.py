@@ -42,6 +42,8 @@ class CleanupJob:
                 if getattr(p, "is_hard", False) is True:
                     continue
                 logger.info("Profile expired: user=%s type=%s", user_id, p.node_type())
+                # TODO: requires elementId from Neo4j read_profiles response;
+                # currently not available via the Plan A client interface.
                 deleted += 1
         return deleted
 
@@ -144,5 +146,7 @@ class CleanupJob:
             to_remove = plist_sorted[:len(plist_sorted) - limit]
             for p in to_remove:
                 logger.info("Anti-bloat: removing %s (confidence=%.2f)", nt, p.confidence)
+                # TODO: requires elementId from Neo4j read_profiles response;
+                # currently not available via the Plan A client interface.
                 removed += 1
         return removed
