@@ -193,19 +193,23 @@ def _classify_intent(query: str) -> str:
 # ── Graph Builder ────────────────────────────────────────────────────
 
 
-def create_pick_agent() -> "CompiledStateGraph":
+def create_pick_agent(checkpointer=None) -> "CompiledStateGraph":
     """Build and compile the Pick AI Shopping Guide agent graph.
+
+    Args:
+        checkpointer: A LangGraph checkpointer instance.
+                    如果为None，则降级使用InMemorySaver（非持久化）。
 
     The compiled graph exposes:
     - .astream(input, config)  → async streaming iterator
     - .ainvoke(input, config)  → async single invocation
     - .get_state(config)       → retrieve current conversation state
-
-    All three share a single InMemorySaver checkpointer so multi-turn
-    conversation state is preserved within the process lifetime.
     """
     model = get_model()
-    checkpointer = InMemorySaver()
+
+    if checkpointer is None:
+        checkpointer = InMemorySaver()
+        logger.warning("未提供checkpointer，使用InMemorySaver（非持久化）")
 
     # ── Sub-agents ──────────────────────────────────────────────────
 
