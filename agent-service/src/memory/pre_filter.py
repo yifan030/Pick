@@ -63,23 +63,25 @@ class VectorPreFilter:
 
         # Build a combined description from all events for embedding
         combined_text = " ".join(e.description for e in events if e.description)
+        stripped = combined_text.strip()
 
-        if not combined_text.strip():
+        if not stripped:
             return []
 
         # 1. Embed the combined text
         try:
-            embedding = embed_texts([combined_text])[0]
+            embedding = embed_texts([stripped])[0]
         except Exception:
             logger.exception("Embedding failed for pre-filter, falling back to all profiles")
             return self._neo4j.read_profiles(user_id)
 
         # 2. Search Milvus for similar historical events
         try:
+            safe_uid = user_id.replace('"', '\\"')
             results = self._milvus.search_dense(
                 collection="user_event",
                 embedding=embedding,
-                filter_expr='user_id == "{}"'.format(user_id),
+                filter_expr=f'user_id == "{safe_uid}"',
                 top_k=top_k,
                 output_fields=["id", "event_type", "description"],
             )

@@ -109,3 +109,26 @@ def test_pre_filter_deduplication(pre_filter, mock_neo4j):
     profiles = pre_filter.filter("u1", events, top_k=5)
     dietary = [p for p in profiles if isinstance(p, DietaryPreference)]
     assert len(dietary) == 1  # deduplicated
+
+
+def test_pre_filter_sanitizes_user_id_in_filter_expr(pre_filter, mock_milvus):
+    """User ID containing double quotes should be escaped in Milvus filter expression."""
+    events = [
+        MemoryEvent(user_id="u1", event_type="search", description="test query", payload={})
+    ]
+    pre_filter.filter('u"ser_1', events, top_k=5)
+    mock_milvus.search_dense.assert_called_once()
+    call_kwargs = mock_milvus.search_dense.call_args[1]
+    filter_expr = call_kwargs["filter_expr"]
+    assert '\\"' in filter_expr  # double quotes escaped
+    assert 'u"ser_1' not in filter_expr.split('"')[1::2]  # raw quotes not in quoted segments
+
+
+def test_pre_filter_whitespace_only_descriptions(pre_filter):
+    """Events with only whitespace descriptions should return empty list."""
+    events = [
+        MemoryEvent(user_id="u1", event_type="search", description="   ", payload={}),
+        MemoryEvent(user_id="u1", event_type="view", description="\t\n", payload={}),
+    ]
+    profiles = pre_filter.filter("u1", events, top_k=5)
+    assert profiles == []
