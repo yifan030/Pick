@@ -151,6 +151,18 @@ class Neo4jClient:
         async with self.driver.session() as session:
             await session.run(query, profile_id=profile_id)
 
+    async def delete_all_profiles(self, user_id: str) -> None:
+        """Delete all profile atoms for a user, preserving non-profile nodes."""
+        labels = list(NODE_TYPE_MAP.keys())
+        label_conditions = " OR ".join(f"p:{label}" for label in labels)
+        query = f"""
+        MATCH (u:User {{user_id: $user_id}})-[r]->(p)
+        WHERE {label_conditions}
+        DETACH DELETE p
+        """
+        async with self.driver.session() as session:
+            await session.run(query, user_id=user_id)
+
     async def get_hard_constraints(self, user_id: str) -> list[AnyProfile]:
         """Get all hard constraints (is_hard=true) for a user.
 
