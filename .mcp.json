@@ -2,7 +2,7 @@
   "mcpServers": {
     "figma": {
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "figma-developer-mcp", "--figma-api-key=FIGMA_API_KEY_REMOVED", "--stdio"]
+      "args": ["/c", "npx", "-y", "figma-developer-mcp", "--figma-api-key=${env:FIGMA_API_KEY}", "--stdio"]
     }
   }
 }
