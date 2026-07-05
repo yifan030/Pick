@@ -1,0 +1,112 @@
+<h2>首页布局设计</h2>
+<p class="subtitle">大地色 Zakka 风 + Naive UI。AI 导购悬浮在搜索栏，分类图标 + 探店瀑布流。</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>经典布局 — 搜索 + 分类横滑 + 双列瀑布流</h3>
+      <p>顶部搜索栏(AI入口) → 横向滑动分类 → 双列探店笔记瀑布流。安全、用户熟悉。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>卡片优先 — 大图推荐 + 分类 + 列表</h3>
+      <p>顶部 Banner 推荐区 → 分类导航 → 纵向列表式笔记（每张卡片更大图）。更小红书。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>方案 A：经典布局</h3>
+  <div class="mockup">
+    <div class="mockup-header">Homepage — 搜索栏(含AI) + 分类横滑 + 双列瀑布流</div>
+    <div class="mockup-body" style="background:#F5F0EB;padding:0;font-size:12px">
+      <!-- Top: location + search + AI -->
+      <div style="background:white;padding:10px 14px;border-bottom:1px solid #EDE4D8">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-weight:600;color:#3A322E;font-size:15px">📍 杭州</span>
+          <span style="color:#B8A89A;font-size:11px">25° 多云</span>
+          <span style="margin-left:auto;font-size:18px">🔔</span>
+        </div>
+        <div style="display:flex;align-items:center;background:#F5F0EB;border-radius:22px;padding:10px 16px;gap:8px">
+          <span style="color:#C67B5C">🔍</span>
+          <span style="color:#B8A89A;flex:1">搜索商户、地点...</span>
+          <div style="background:linear-gradient(135deg,#C67B5C,#A0523D);color:white;padding:6px 14px;border-radius:16px;font-size:11px;font-weight:500;display:flex;align-items:center;gap:4px">
+            <span>✨</span><span>AI</span>
+          </div>
+        </div>
+      </div>
+      <!-- Category horizontal scroll -->
+      <div style="background:white;padding:12px 14px;border-bottom:1px solid #F5F0EB">
+        <div style="display:flex;gap:18px;overflow-x:auto;font-size:10px;text-align:center">
+          <div>🍜<br>美食</div><div>🎤<br>KTV</div><div>💆<br>SPA</div>
+          <div>🍻<br>酒吧</div><div>☕<br>咖啡</div><div>🎮<br>娱乐</div>
+          <div>🏨<br>酒店</div><div>🎬<br>电影</div>
+        </div>
+      </div>
+      <!-- Two-column waterfall -->
+      <div style="display:flex;gap:8px;padding:8px">
+        <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+          <div style="background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+            <div class="placeholder" style="height:80px">img</div>
+            <div style="padding:8px"><p style="font-weight:500;color:#3A322E;margin:0;font-size:11px">西湖边的宝藏日料店</p><p style="color:#999;font-size:10px;margin:4px 0 0">@美食达人 · ❤️ 128</p></div>
+          </div>
+          <div style="background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+            <div class="placeholder" style="height:120px">img</div>
+            <div style="padding:8px"><p style="font-weight:500;color:#3A322E;margin:0;font-size:11px">杭州最值得去的10家咖啡馆</p><p style="color:#999;font-size:10px;margin:4px 0 0">@咖啡控 · ❤️ 256</p></div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+          <div style="background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+            <div class="placeholder" style="height:110px">img</div>
+            <div style="padding:8px"><p style="font-weight:500;color:#3A322E;margin:0;font-size:11px">周末探店｜网红火锅测评</p><p style="color:#999;font-size:10px;margin:4px 0 0">@吃货小分队 · ❤️ 89</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>方案 B：卡片优先（小红书风）</h3>
+  <div class="mockup">
+    <div class="mockup-header">Homepage — Banner + 大图卡片列表</div>
+    <div class="mockup-body" style="background:#F5F0EB;padding:0;font-size:12px">
+      <div style="background:white;padding:10px 14px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:600;color:#3A322E;font-size:15px">📍 杭州</span>
+          <span style="margin-left:auto;font-size:18px">🔔</span>
+        </div>
+      </div>
+      <!-- Banner -->
+      <div style="margin:8px;border-radius:12px;background:linear-gradient(135deg,#C67B5C,#A0523D);padding:16px;color:white">
+        <p style="margin:0;font-size:14px;font-weight:600">🌸 周末去哪儿？</p>
+        <p style="margin:4px 0 8px;font-size:11px;opacity:0.85">看看这周最受好评的新店</p>
+        <div style="background:rgba(255,255,255,0.2);border-radius:14px;padding:8px 14px;display:inline-flex;align-items:center;gap:4px;font-size:11px">
+          <span>✨</span><span>AI 帮我推荐</span>
+        </div>
+      </div>
+      <!-- Categories -->
+      <div style="background:white;padding:10px 14px;margin:0 8px;border-radius:10px;display:flex;flex-wrap:wrap;gap:12px 0">
+        <span style="width:20%;text-align:center;font-size:10px;color:#3A322E">🍜<br>美食</span>
+        <span style="width:20%;text-align:center;font-size:10px;color:#3A322E">🎤<br>KTV</span>
+        <span style="width:20%;text-align:center;font-size:10px;color:#3A322E">💆<br>SPA</span>
+        <span style="width:20%;text-align:center;font-size:10px;color:#3A322E">🍻<br>酒吧</span>
+        <span style="width:20%;text-align:center;font-size:10px;color:#3A322E">☕<br>咖啡</span>
+      </div>
+      <!-- Single column large cards -->
+      <div style="padding:8px;display:flex;flex-direction:column;gap:8px">
+        <div style="background:white;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+          <div class="placeholder" style="height:120px;background:#EDE4D8">探店大图</div>
+          <div style="padding:10px 12px"><p style="font-weight:600;color:#3A322E;margin:0;font-size:13px">西湖边的宝藏日料店 · 人均80</p><p style="color:#999;font-size:10px;margin:4px 0 0">🍣 日料 · 西湖区 · ❤️ 128</p></div>
+        </div>
+        <div style="background:white;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04)">
+          <div class="placeholder" style="height:100px;background:#EDE4D8">探店大图</div>
+          <div style="padding:10px 12px"><p style="font-weight:600;color:#3A322E;margin:0;font-size:13px">杭州咖啡馆巡礼 · 10家必去</p><p style="color:#999;font-size:10px;margin:4px 0 0">☕ 咖啡 · 全城 · ❤️ 256</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

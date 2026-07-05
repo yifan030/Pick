@@ -1,0 +1,65 @@
+<h2>Pick 前端重设计 — 设计方向</h2>
+<p class="subtitle">当前是一个大众点评/美团风格的移动端本地生活平台。你希望往哪个方向走？</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>精致生活 — 保留 O2O 本质</h3>
+      <p>在现有点评风格基础上升级：更好的卡片设计、更现代的配色、更流畅的动效。<br>像<strong>最新版大众点评</strong>或<strong>Airbnb</strong>的质感。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>极简轻量 — 日系/Zakka 风格</h3>
+      <p>大量留白、柔和配色、圆角卡片、细字体。<br>像<strong>小红书</strong>或日本本地生活类 App 的清爽感。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>潮流个性 — 年轻化/夜店风</h3>
+      <p>深色主题+霓虹点缀、大字体、沉浸式图文。<br>像<strong>抖音</strong>或新一线城市夜生活平台的酷感。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="d" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>有自己的想法</h3>
+      <p>你有 Figma 设计稿、参考 App、或者心中已有画面，可以直接描述。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>当前设计快照（参考）</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">首页</div>
+      <div class="mockup-body" style="font-size:11px;line-height:1.6">
+        <div class="mock-nav" style="background:#ff6633;color:white">🔍 搜索商户、地点 &nbsp;&nbsp;&nbsp; 👤</div>
+        <div style="display:flex;flex-wrap:wrap;padding:8px;background:white">
+          <span style="width:20%;text-align:center;font-size:10px">🍜 美食</span>
+          <span style="width:20%;text-align:center;font-size:10px">🎤 KTV</span>
+          <span style="width:20%;text-align:center;font-size:10px">💆 SPA</span>
+          <span style="width:20%;text-align:center;font-size:10px">🍻 酒吧</span>
+          <span style="width:20%;text-align:center;font-size:10px">🎮 娱乐</span>
+        </div>
+        <div class="placeholder" style="margin:4px 8px">探店笔记瀑布流...</div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">商家详情</div>
+      <div class="mockup-body" style="font-size:11px;line-height:1.6">
+        <div class="mock-nav">← 商家名称 &nbsp;&nbsp; ...</div>
+        <div style="padding:8px">
+          <p style="font-weight:bold;margin:0">海底捞火锅</p>
+          <p style="color:#f63;margin:2px 0">★★★★★ 4.5 (200条)</p>
+          <p style="color:#666;margin:2px 0;font-size:10px">📍 湖滨银泰in77</p>
+        </div>
+        <div class="placeholder" style="margin:4px 8px">代金券卡片列表...</div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,63 @@
+<h2>UI 框架选择</h2>
+<p class="subtitle">目前用的是 Element Plus 2.9。极简风格对组件库的设计语言要求更高，你倾向于？</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>保留 Element Plus + 深度定制</h3>
+      <p>利用 CSS 变量覆盖主题色、圆角、间距。改动最小，但设计自由度受限。</p>
+      <p style="color:#909399;font-size:13px">工作量：⭐⭐ | 自由度：⭐⭐</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>切换到 Naive UI</h3>
+      <p>尤雨溪推荐的 Vue 3 组件库，天然极简设计语言，TypeScript 优先，暗色模式内置。</p>
+      <p style="color:#909399;font-size:13px">工作量：⭐⭐⭐ | 自由度：⭐⭐⭐⭐</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Tailwind CSS + Headless UI</h3>
+      <p>完全自定义设计，最大自由度。适合追求独特视觉风格。无预设组件，需从头搭建。</p>
+      <p style="color:#909399;font-size:13px">工作量：⭐⭐⭐⭐⭐ | 自由度：⭐⭐⭐⭐⭐</p>
+    </div>
+  </div>
+  <div class="option" data-choice="d" onclick="toggleSelect(this)">
+    <div class="letter">D</div>
+    <div class="content">
+      <h3>Ant Design Vue</h3>
+      <p>蚂蚁金服设计体系，成熟稳定，但偏企业级，设计风格较"重"。</p>
+      <p style="color:#909399;font-size:13px">工作量：⭐⭐⭐ | 自由度：⭐⭐⭐</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>风格对比（移动端卡片示例）</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Element Plus（当前）</div>
+      <div class="mockup-body" style="font-size:12px">
+        <div style="background:white;border-radius:4px;padding:12px;margin:8px;box-shadow:0 1px 2px rgba(0,0,0,0.1)">
+          <p style="font-weight:bold;color:#303133;margin:0 0 4px">海底捞火锅</p>
+          <p style="color:#f63;margin:0 0 4px">★★★★★ 4.5</p>
+          <p style="color:#909399;margin:0;font-size:11px">📍 湖滨银泰 · ￥150/人</p>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">Naive UI（极简原生）</div>
+      <div class="mockup-body" style="font-size:12px;font-family:system-ui">
+        <div style="background:white;border-radius:12px;padding:14px;margin:8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #f0f0f0">
+          <p style="font-weight:600;color:#1a1a1a;margin:0 0 6px;font-size:15px">海底捞火锅</p>
+          <p style="color:#18a058;margin:0 0 6px">★★★★★ 4.5</p>
+          <p style="color:#999;margin:0;font-size:12px">📍 湖滨银泰 · ￥150/人</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

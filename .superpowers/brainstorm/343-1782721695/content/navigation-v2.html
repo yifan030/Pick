@@ -1,0 +1,70 @@
+<h2>导航结构 — 调整版</h2>
+<p class="subtitle">AI 导购移出 Tab 栏，悬浮在首页搜索区域。底部 4 Tab + 中间发布。</p>
+
+<div class="section">
+  <h3>首页布局预览</h3>
+  <div class="mockup">
+    <div class="mockup-header">首页 — AI 导购悬浮在搜索栏</div>
+    <div class="mockup-body" style="background:#F5F0EB;padding:0;font-size:12px">
+      <!-- Search bar area with AI -->
+      <div style="background:white;padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #EDE4D8">
+        <div style="flex:1;display:flex;align-items:center;background:#F5F0EB;border-radius:20px;padding:8px 14px;gap:8px">
+          <span style="color:#C67B5C;font-size:16px">🔍</span>
+          <span style="color:#B8A89A">搜索商户、地点...</span>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:4px;background:linear-gradient(135deg,#C67B5C,#A0523D);color:white;padding:4px 10px;border-radius:14px;font-size:11px">
+            <span>✨</span><span>AI导购</span>
+          </div>
+        </div>
+      </div>
+      <!-- Category icons -->
+      <div style="display:flex;flex-wrap:wrap;padding:12px 8px;background:white;gap:4px 0">
+        <span style="width:20%;text-align:center;font-size:10px;color:#3A322E">🍜 美食</span>
+        <span style="width:20%;text-align:center;font-size:10px;color:#3A322E">🎤 KTV</span>
+        <span style="width:20%;text-align:center;font-size:10px;color:#3A322E">💆 SPA</span>
+        <span style="width:20%;text-align:center;font-size:10px;color:#3A322E">🍻 酒吧</span>
+        <span style="width:20%;text-align:center;font-size:10px;color:#3A322E">🎮 娱乐</span>
+      </div>
+      <div class="placeholder" style="margin:8px">探店笔记瀑布流...</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>第四个 Tab 放什么？（替换 AI导购）</h3>
+  <div class="options" data-multiselect>
+    <div class="option" data-choice="a" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>消息/通知</h3>
+        <p>系统通知、互动消息、优惠券到期提醒等。</p>
+      </div>
+    </div>
+    <div class="option" data-choice="b" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>探店（博客）</h3>
+        <p>独立的探店笔记浏览页，瀑布流展示所有用户探店内容。</p>
+      </div>
+    </div>
+    <div class="option" data-choice="c" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>优惠券/订单</h3>
+        <p>我的优惠券 + 订单列表入口，方便快速查看已购和待用。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>底部导航预览（4 Tab + 中心发布）</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="background:white;padding:10px 16px;display:flex;justify-content:space-around;align-items:center;border-top:1px solid #EDE4D8">
+      <div style="text-align:center;color:#C67B5C"><div style="font-size:18px">🏠</div><div style="font-size:10px">首页</div></div>
+      <div style="text-align:center;color:#999"><div style="font-size:18px">📍</div><div style="font-size:10px">附近</div></div>
+      <div style="text-align:center"><div style="width:36px;height:36px;background:linear-gradient(135deg,#C67B5C,#A0523D);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:white;font-size:18px;box-shadow:0 2px 8px rgba(198,123,92,0.3)">+</div></div>
+      <div style="text-align:center;color:#999"><div style="font-size:18px">❓</div><div style="font-size:10px;color:#C67B5C">???</div></div>
+      <div style="text-align:center;color:#999"><div style="font-size:18px">👤</div><div style="font-size:10px">我的</div></div>
+    </div>
+  </div>
+</div>

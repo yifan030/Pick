@@ -1,0 +1,74 @@
+<h2>导航结构设计</h2>
+<p class="subtitle">当前是 5 个底部 Tab：首页 | 地图(无效) | +(发布) | AI导购 | 我的。极简风格下怎么调整？</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>精简 4 Tab — 去地图</h3>
+      <p>首页 | 发现 | AI导购 | 我的<br>把"地图"去掉，中间发布按钮改为"发现"入口。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>4 Tab — 保留地图</h3>
+      <p>首页 | 地图 | AI导购 | 我的<br>地图改成附近商家地图视图，发布按钮悬浮在首页。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>5 Tab 保留但重命名</h3>
+      <p>首页 | 附近 | + | 助手 | 我的<br>保持现有 5 个位，重新命名让每个都有实际功能。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>导航栏预览（大地色系）</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">方案 A：精简 4 Tab</div>
+      <div class="mockup-body" style="background:#F5F0EB;padding:0">
+        <div style="background:white;padding:10px 16px;display:flex;justify-content:space-around;border-top:1px solid #EDE4D8">
+          <div style="text-align:center;color:#C67B5C"><div style="font-size:18px">🏠</div><div style="font-size:10px">首页</div></div>
+          <div style="text-align:center;color:#999"><div style="font-size:18px">🧭</div><div style="font-size:10px">发现</div></div>
+          <div style="text-align:center;color:#999"><div style="font-size:18px">🤖</div><div style="font-size:10px">AI导购</div></div>
+          <div style="text-align:center;color:#999"><div style="font-size:18px">👤</div><div style="font-size:10px">我的</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">方案 B：保留地图</div>
+      <div class="mockup-body" style="background:#F5F0EB;padding:0">
+        <div style="background:white;padding:10px 16px;display:flex;justify-content:space-around;border-top:1px solid #EDE4D8">
+          <div style="text-align:center;color:#C67B5C"><div style="font-size:18px">🏠</div><div style="font-size:10px">首页</div></div>
+          <div style="text-align:center;color:#999"><div style="font-size:18px">🗺️</div><div style="font-size:10px">地图</div></div>
+          <div style="text-align:center;color:#999"><div style="font-size:18px">🤖</div><div style="font-size:10px">AI导购</div></div>
+          <div style="text-align:center;color:#999"><div style="font-size:18px">👤</div><div style="font-size:10px">我的</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="split" style="margin-top:12px">
+    <div class="mockup">
+      <div class="mockup-header">方案 C：5 Tab 保留</div>
+      <div class="mockup-body" style="background:#F5F0EB;padding:0">
+        <div style="background:white;padding:10px 12px;display:flex;justify-content:space-around;border-top:1px solid #EDE4D8">
+          <div style="text-align:center;color:#C67B5C"><div style="font-size:16px">🏠</div><div style="font-size:9px">首页</div></div>
+          <div style="text-align:center;color:#999"><div style="font-size:16px">📍</div><div style="font-size:9px">附近</div></div>
+          <div style="text-align:center"><div style="width:30px;height:30px;background:#C67B5C;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:white;font-size:16px">+</div></div>
+          <div style="text-align:center;color:#999"><div style="font-size:16px">🤖</div><div style="font-size:9px">助手</div></div>
+          <div style="text-align:center;color:#999"><div style="font-size:16px">👤</div><div style="font-size:9px">我的</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">发布按钮（跳转到发现/探店笔记发布）</div>
+      <div class="mockup-body" style="background:#F5F0EB;padding:12px;font-size:12px;color:#999">
+        <p>目前中间的"+"跳转到 blogEdit 探店笔记编辑。<br>你想保留这个功能吗？还是改成别的？</p>
+      </div>
+    </div>
+  </div>
+</div>

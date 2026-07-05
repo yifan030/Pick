@@ -19,6 +19,8 @@ from src.memory.cold_start import ColdStartManager
 from src.retrieval.gateway import RetrievalGateway
 from src.retrieval.prompt_builder import PromptBuilder
 from src.storage.postgres_saver import PostgresSaverManager
+from src.storage.neo4j_client import Neo4jClient
+from src.storage.milvus_store import MilvusMemoryStore
 
 logger = logging.getLogger("pick.main")
 
@@ -96,8 +98,28 @@ async def lifespan(app: FastAPI):
         logger.exception("PostgresSaver init failed, falling back to InMemorySaver")
 
     # ── Neo4j Client (Plan A) ──
-    # TODO: Initialize Neo4jClient from Plan A (env vars NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
-    neo4j_client = None
+    neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+    neo4j_user = os.getenv("NEO4J_USER", "neo4j")
+    neo4j_password = os.getenv("NEO4J_PASSWORD", "neo4j123")
+    neo4j_client = Neo4jClient(uri=neo4j_uri, user=neo4j_user, password=neo4j_password)
+    try:
+        await neo4j_client.connect()
+        logger.info("Neo4jClient connected: %s", neo4j_uri)
+    except Exception:
+        logger.exception("Neo4jClient init failed, falling back to None")
+        neo4j_client = None
+
+    # ── Milvus Memory Store (Plan A) ──
+    milvus_host = os.getenv("MILVUS_HOST", "localhost")
+    milvus_port = int(os.getenv("MILVUS_PORT", "19530"))
+    milvus_store = MilvusMemoryStore(host=milvus_host, port=milvus_port)
+    try:
+        milvus_store.connect()
+        created = milvus_store.create_all_collections()
+        logger.info("MilvusMemoryStore connected: %s:%s, collections=%s", milvus_host, milvus_port, created)
+    except Exception:
+        logger.exception("MilvusMemoryStore init failed, falling back to None")
+        milvus_store = None
 
     # ── Cold Start Manager (Plan D) ──
     cold_start_mgr = ColdStartManager(neo4j_client=neo4j_client, java_client=None)
@@ -120,15 +142,20 @@ async def lifespan(app: FastAPI):
 
     # ── Retrieval Gateway (Plan C + D cold start) ──
     _retrieval_gateway = RetrievalGateway(
-        milvus_store=None,  # TODO: wire MilvusMemoryStore from Plan A
+        milvus_store=milvus_store,
         neo4j_client=neo4j_client,
         cold_start_manager=cold_start_mgr,
     ) if neo4j_client else None
-    logger.info("RetrievalGateway initialized (cold_start=%s)", "ready" if cold_start_mgr else "pending")
+    logger.info("RetrievalGateway initialized (neo4j=%s, milvus=%s, cold_start=%s)",
+                "ready" if neo4j_client else "no",
+                "ready" if milvus_store else "no",
+                "ready" if cold_start_mgr else "no")
 
     # ── Memory Pipeline (Plan B) ──
-    _pipeline = MemoryPipeline(neo4j_client=neo4j_client, milvus_store=None)
-    logger.info("MemoryPipeline initialized (storage clients pending Plan A)")
+    _pipeline = MemoryPipeline(neo4j_client=neo4j_client, milvus_store=milvus_store)
+    logger.info("MemoryPipeline initialized (neo4j=%s, milvus=%s)",
+                "ready" if neo4j_client else "no",
+                "ready" if milvus_store else "no")
 
     # ── Feedback Consumer (Kafka) ──
     import os
@@ -160,6 +187,20 @@ async def lifespan(app: FastAPI):
         await pg_manager.close()
     except Exception:
         logger.exception("Error closing PostgresSaver")
+    # 关闭 Milvus
+    if milvus_store and milvus_store.client:
+        try:
+            milvus_store.client.close()
+            logger.info("MilvusMemoryStore closed")
+        except Exception:
+            logger.exception("Error closing MilvusMemoryStore")
+    # 关闭 Neo4j
+    if neo4j_client:
+        try:
+            await neo4j_client.close()
+            logger.info("Neo4jClient closed")
+        except Exception:
+            logger.exception("Error closing Neo4jClient")
     # 优雅关闭 FeedbackConsumer
     feedback_consumer = getattr(app.state, 'feedback_consumer', None)
     if feedback_consumer:

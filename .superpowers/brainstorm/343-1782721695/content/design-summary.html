@@ -1,0 +1,66 @@
+<h2>设计总结 — Pick 前端重设计</h2>
+<p class="subtitle">大地色 Zakka 极简风 · Naive UI · 卡片优先</p>
+
+<div class="section">
+  <h3>🎨 设计系统</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="padding:16px;font-size:13px;line-height:1.8">
+      <p><strong>主色：</strong><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#C67B5C;vertical-align:middle"></span> 陶土棕 <code>#C67B5C</code> — 按钮、强调、图标激活</p>
+      <p><strong>辅助：</strong><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#EDE4D8;vertical-align:middle"></span> 暖灰米 <code>#EDE4D8</code> — 标签、分割线、浅底</p>
+      <p><strong>背景：</strong><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#F5F0EB;vertical-align:middle"></span> 奶白 <code>#F5F0EB</code> — 页面全局背景</p>
+      <p><strong>卡底：</strong><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#FFFFFF;vertical-align:middle"></span> 纯白 <code>#FFFFFF</code> — 卡片背景</p>
+      <p><strong>文字：</strong><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#3A322E;vertical-align:middle"></span> 深棕 <code>#3A322E</code> — 主文字</p>
+      <p><strong>圆角：</strong>卡片 12px · 按钮 20px · 标签 8px</p>
+      <p><strong>阴影：</strong>极轻 — 卡片 <code>0 1px 3px rgba(0,0,0,0.04)</code></p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>🗺️ 页面结构</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:13px">
+    <tr style="border-bottom:1px solid #EDE4D8"><td style="padding:8px;font-weight:600;color:#C67B5C">Tab</td><td style="padding:8px;font-weight:600;color:#C67B5C">页面</td><td style="padding:8px;font-weight:600;color:#C67B5C">说明</td></tr>
+    <tr style="border-bottom:1px solid #EDE4D8"><td style="padding:8px">🏠 首页</td><td style="padding:8px">index</td><td style="padding:8px">Banner推荐(含AI入口) + 分类网格 + 大图卡片列表</td></tr>
+    <tr style="border-bottom:1px solid #EDE4D8"><td style="padding:8px">📍 附近</td><td style="padding:8px">nearby</td><td style="padding:8px">基于位置的商家发现（地图+列表）</td></tr>
+    <tr style="border-bottom:1px solid #EDE4D8"><td style="padding:8px">+ 发布</td><td style="padding:8px">blogEdit</td><td style="padding:8px">探店笔记发布（保留现有功能）</td></tr>
+    <tr style="border-bottom:1px solid #EDE4D8"><td style="padding:8px">🎫 订单</td><td style="padding:8px">orders</td><td style="padding:8px">我的优惠券 + 订单列表</td></tr>
+    <tr><td style="padding:8px">👤 我的</td><td style="padding:8px">info</td><td style="padding:8px">个人主页、设置、收藏</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>🤖 AI 导购入口</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="font-size:13px">
+      <p>Homepage Banner 底部有 <span style="background:rgba(255,255,255,0.2);color:white;padding:4px 12px;border-radius:14px;font-size:11px">✨ AI 帮我推荐</span> 按钮，点击打开全屏聊天界面。</p>
+      <p>搜索栏右侧也有 AI 快捷入口。</p>
+      <p>聊天界面仍然全屏独立页面（/ai-assistant），不在底部 Tab。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>✅ 已确定 vs ❓ 待确认</h3>
+  <div class="pros-cons">
+    <div class="pros"><h4>✅ 已定</h4>
+      <ul>
+        <li>风格：大地色 Zakka 极简风</li>
+        <li>框架：Naive UI</li>
+        <li>配色：陶土棕主色</li>
+        <li>无暗色模式</li>
+        <li>导航：首页 | 附近 | + | 订单 | 我的</li>
+        <li>首页：卡片优先 Banner 布局</li>
+        <li>AI导购：悬浮搜索栏 + Banner入口</li>
+      </ul>
+    </div>
+    <div class="cons"><h4>❓ 还没聊</h4>
+      <ul>
+        <li>商家详情页布局（改动大吗？）</li>
+        <li>优惠券卡片样式</li>
+        <li>字体选择</li>
+        <li>动效/过渡风格</li>
+        <li>登录/注册页是否重设计</li>
+      </ul>
+    </div>
+  </div>
+</div>

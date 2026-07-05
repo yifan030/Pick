@@ -1,9 +1,8 @@
 """Tests for shared memory data models."""
 import json
 import time
-from dataclasses import asdict
 from src.storage.models import (
-    ProfileAtom,
+    ProfileBase,
     TastePreference,
     DietaryPreference,
     BudgetPreference,
@@ -15,7 +14,6 @@ from src.storage.models import (
     SessionSummary,
     AgentCase,
     DeltaOperation,
-    ProfileDelta,
     DELTA_ADD,
     DELTA_REINFORCE,
     DELTA_REVISE,
@@ -100,9 +98,9 @@ def test_delta_operation_types():
     assert len(ops) == 7
 
 
-def test_profile_delta_structure():
-    """ProfileDelta should carry operation + target info."""
-    delta = ProfileDelta(
+def test_delta_operation_structure():
+    """DeltaOperation should carry operation + target info."""
+    delta = DeltaOperation(
         op=DELTA_ADD,
         target_type="CuisinePreference",
         new_value=CuisinePreference(
