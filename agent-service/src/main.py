@@ -131,15 +131,6 @@ async def lifespan(app: FastAPI):
     app.state.memory_control = memory_control
     logger.info("MemoryControlHandler initialized (neo4j_client=%s)", "ready" if neo4j_client else "pending")
 
-    # ── Agent ──
-    logger.info("Initializing Pick AI agent...")
-    _agent = create_pick_agent(
-        checkpointer=saver,
-        memory_control_handler=memory_control,
-        neo4j_client=neo4j_client,
-    )
-    logger.info("Agent initialized successfully")
-
     # ── Retrieval Gateway (Plan C + D cold start) ──
     _retrieval_gateway = RetrievalGateway(
         milvus_store=milvus_store,
@@ -156,6 +147,18 @@ async def lifespan(app: FastAPI):
     logger.info("MemoryPipeline initialized (neo4j=%s, milvus=%s)",
                 "ready" if neo4j_client else "no",
                 "ready" if milvus_store else "no")
+
+    # ── Agent ──
+    logger.info("Initializing Pick AI agent...")
+    _agent = create_pick_agent(
+        checkpointer=saver,
+        memory_control_handler=memory_control,
+        neo4j_client=neo4j_client,
+        retrieval_gateway=_retrieval_gateway,
+        prompt_builder=_prompt_builder,
+        memory_pipeline=_pipeline,
+    )
+    logger.info("Agent initialized successfully")
 
     # ── Feedback Consumer (Kafka) ──
     import os
