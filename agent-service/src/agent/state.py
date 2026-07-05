@@ -70,4 +70,5 @@ class WorkerState(TypedDict, total=False):
     messages: Annotated[list, add_messages]
     tool_rounds: int
     worker_result: dict
+    worker_results: Annotated[list[dict], merge_lists]
     candidate_deltas: list[dict]

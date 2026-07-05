@@ -333,14 +333,16 @@ def _build_empty_output(state: WorkerState) -> dict[str, Any]:
     if isinstance(worker_task, dict):
         worker_id = worker_task.get("worker_id", "unknown_worker")
 
+    wr = {
+        "worker_id": worker_id,
+        "status": "success",
+        "summary": summary,
+        "artifacts": [],
+        "error": None,
+    }
     return {
-        "worker_result": {
-            "worker_id": worker_id,
-            "status": "success",
-            "summary": summary,
-            "artifacts": [],
-            "error": None,
-        },
+        "worker_result": wr,
+        "worker_results": [wr],
         "candidate_deltas": [],
     }
 
@@ -417,14 +419,16 @@ def _extract_deltas_node(
         for d in deltas:
             d.setdefault("source_worker", worker_id)
 
+        wr = {
+            "worker_id": worker_id,
+            "status": "success",
+            "summary": result.get("summary", "Task completed"),
+            "artifacts": [],
+            "error": None,
+        }
         return {
-            "worker_result": {
-                "worker_id": worker_id,
-                "status": "success",
-                "summary": result.get("summary", "Task completed"),
-                "artifacts": [],
-                "error": None,
-            },
+            "worker_result": wr,
+            "worker_results": [wr],
             "candidate_deltas": deltas,
         }
     except Exception:
