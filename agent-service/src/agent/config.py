@@ -1,6 +1,6 @@
 import os
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAI
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
 
@@ -30,6 +30,19 @@ def get_llm_client() -> AsyncOpenAI:
     保留此函数供 ingestion 和未迁移代码使用。
     """
     return AsyncOpenAI(
+        base_url=os.environ.get("LLM_BASE_URL"),
+        api_key=os.environ.get("LLM_API_KEY", "sk-placeholder"),
+    )
+
+
+def get_sync_llm_client() -> OpenAI:
+    """返回同步 OpenAI 客户端，供手写 ReAct 循环使用。
+
+    与 get_model() / get_llm_client() 使用相同的环境变量：
+    - LLM_BASE_URL: API 基础地址
+    - LLM_API_KEY: API 密钥
+    """
+    return OpenAI(
         base_url=os.environ.get("LLM_BASE_URL"),
         api_key=os.environ.get("LLM_API_KEY", "sk-placeholder"),
     )
