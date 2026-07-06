@@ -39,3 +39,8 @@ build/
 .vscode/
 
 CLAUDE.md
+
+### Environment ###
+.env
+.env.local
+agent-service/.env

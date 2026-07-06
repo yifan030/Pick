@@ -128,6 +128,92 @@ INSERT INTO `tb_shop` VALUES
 (14,'星聚会KTV(拱墅区万达店)',21,'https://p0.meituan.net/dpmerchantpic/f4cd6d8d4eb1959c3ea826aa05a552c01840451.jpg,https://p0.meituan.net/dpmerchantpic/2efc07aed856a8ab0fc75c86f4b9b0061655777.jpg,https://qcloud.dpfile.com/pc/zWfzzIorCohKT0bFwsfAlHuayWjI6DBEMPHHncmz36EEMU9f48PuD9VxLLDAjdoU_Gd2X_f-v9T8Yj4uLt25Gg.jpg','北部新城','杭行路666号万达广场C座1-2F',120.128958,30.337252,60,17771,685,47,'10:00-22:00','万达商圈知名连锁KTV品牌，环境时尚、曲库全、服务好。支持手机点歌和在线预订，是拱墅区年轻人聚会首选。','[\"停车方便\",\"环境好\",\"曲库全\",\"连锁品牌\"]','[\"朋友聚会\",\"生日庆祝\",\"公司团建\"]','2021-12-22 12:48:54','2021-12-22 12:48:54');
 
 -- -----------------------------------------------------------
+-- Table: tb_shop_image (商铺图片元数据) — 长期方案：替代 tb_shop.images TEXT 逗号分隔
+-- -----------------------------------------------------------
+DROP TABLE IF EXISTS `tb_shop_image`;
+CREATE TABLE `tb_shop_image` (
+    `id`          BIGINT UNSIGNED NOT NULL COMMENT '主键（Snowflake）',
+    `shop_id`     BIGINT UNSIGNED NOT NULL COMMENT '关联商铺id',
+    `url`         VARCHAR(512)    NOT NULL COMMENT '图片URL',
+    `type`        VARCHAR(16)     NOT NULL DEFAULT 'cover' COMMENT '图片类型: cover(门头)/env(环境)/dish(菜品)/menu(菜单)',
+    `alt`         VARCHAR(128)    DEFAULT NULL COMMENT '图片替代文本（无障碍）',
+    `sort`        INT UNSIGNED    NOT NULL DEFAULT 0 COMMENT '排序序号，越小越靠前',
+    `create_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_shop_id` (`shop_id`),
+    INDEX `idx_shop_type` (`shop_id`, `type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `tb_shop_image` VALUES
+-- 103茶餐厅 (shop_id=1) — 茶餐厅，港式怀旧风格
+(1000, 1, 'https://qcloud.dpfile.com/pc/jiclIsCKmOI2arxKN1Uf0Hx3PucIJH8q0QSz-Z8llzcN56-_QiKuOvyio1OOxsRtFoXqu0G3iT2T27qat3WhLVEuLYk00OmSS1IdNpm8K8sG4JN9RIm2mTKcbLtc2o2vfCF2ubeXzk49OsGrXt_KYDCngOyCwZK-s3fqawWswzk.jpg', 'cover', '103茶餐厅门头', 0, '2021-12-22 10:10:39', '2022-01-13 09:32:19'),
+(1001, 1, 'https://qcloud.dpfile.com/pc/IOf6VX3qaBgFXFVgp75w-KKJmWZjFc8GXDU8g9bQC6YGCpAmG00QbfT4vCCBj7njuzFvxlbkWx5uwqY2qcjixFEuLYk00OmSS1IdNpm8K8sG4JN9RIm2mTKcbLtc2o2vmIU_8ZGOT1OjpJmLxG6urQ.jpg', 'env', '103茶餐厅店内环境', 1, '2021-12-22 10:10:39', '2022-01-13 09:32:19'),
+
+-- 蔡馬洪涛烤肉·老北京铜锅涮羊肉 (shop_id=2) — 老北京涮羊肉
+(2000, 2, 'https://p0.meituan.net/bbia/c1870d570e73accbc9fee90b48faca41195272.jpg', 'cover', '蔡馬洪涛烤肉门头', 0, '2021-12-22 11:00:13', '2022-01-11 08:12:26'),
+(2001, 2, 'http://p0.meituan.net/mogu/397e40c28fc87715b3d5435710a9f88d706914.jpg', 'env', '铜锅涮羊肉大厅', 1, '2021-12-22 11:00:13', '2022-01-11 08:12:26'),
+(2002, 2, 'https://qcloud.dpfile.com/pc/MZTdRDqCZdbPDUO0Hk6lZENRKzpKRF7kavrkEI99OxqBZTzPfIxa5E33gBfGouhFuzFvxlbkWx5uwqY2qcjixFEuLYk00OmSS1IdNpm8K8sG4JN9RIm2mTKcbLtc2o2vmIU_8ZGOT1OjpJmLxG6urQ.jpg', 'dish', '老北京涮羊肉', 2, '2021-12-22 11:00:13', '2022-01-11 08:12:26'),
+
+-- 新白鹿餐厅(运河上街店) (shop_id=3) — 杭帮菜
+(3000, 3, 'https://p0.meituan.net/biztone/694233_1619500156517.jpeg', 'cover', '新白鹿餐厅门头', 0, '2021-12-22 11:10:05', '2022-01-11 08:12:42'),
+(3001, 3, 'https://img.meituan.net/msmerchant/876ca8983f7395556eda9ceb064e6bc51840883.png', 'env', '大厅用餐环境', 1, '2021-12-22 11:10:05', '2022-01-11 08:12:42'),
+(3002, 3, 'https://img.meituan.net/msmerchant/86a76ed53c28eff709a36099aefe28b51554088.png', 'env', '包厢环境', 2, '2021-12-22 11:10:05', '2022-01-11 08:12:42'),
+
+-- Mamala(杭州远洋乐堤港店) (shop_id=4) — 精致西餐
+(4000, 4, 'https://img.meituan.net/msmerchant/232f8fdf09050838bd33fb24e79f30f9606056.jpg', 'cover', 'Mamala西餐厅门头', 0, '2021-12-22 11:17:15', '2022-01-11 08:12:51'),
+(4001, 4, 'https://qcloud.dpfile.com/pc/rDe48Xe15nQOHCcEEkmKUp5wEKWbimt-HDeqYRWsYJseXNncvMiXbuED7x1tXqN4uzFvxlbkWx5uwqY2qcjixFEuLYk00OmSS1IdNpm8K8sG4JN9RIm2mTKcbLtc2o2vmIU_8ZGOT1OjpJmLxG6urQ.jpg', 'env', '浪漫鲜花装饰', 1, '2021-12-22 11:17:15', '2022-01-11 08:12:51'),
+
+-- 海底捞火锅(水晶城购物中心店) (shop_id=5) — 火锅
+(5000, 5, 'https://img.meituan.net/msmerchant/054b5de0ba0b50c18a620cc37482129a45739.jpg', 'cover', '海底捞火锅门头', 0, '2021-12-22 11:20:58', '2022-01-11 08:13:01'),
+(5001, 5, 'https://img.meituan.net/msmerchant/59b7eff9b60908d52bd4aea9ff356e6d145920.jpg', 'env', '大厅环境', 1, '2021-12-22 11:20:58', '2022-01-11 08:13:01'),
+(5002, 5, 'https://qcloud.dpfile.com/pc/Qe2PTEuvtJ5skpUXKKoW9OQ20qc7nIpHYEqJGBStJx0mpoyeBPQOJE4vOdYZwm9AuzFvxlbkWx5uwqY2qcjixFEuLYk00OmSS1IdNpm8K8sG4JN9RIm2mTKcbLtc2o2vmIU_8ZGOT1OjpJmLxG6urQ.jpg', 'env', '排队等候区', 2, '2021-12-22 11:20:58', '2022-01-11 08:13:01'),
+
+-- 幸福里老北京涮锅（丝联店）(shop_id=6) — 涮羊肉
+(6000, 6, 'https://img.meituan.net/msmerchant/e71a2d0d693b3033c15522c43e03f09198239.jpg', 'cover', '幸福里老北京涮锅门头', 0, '2021-12-22 11:24:53', '2022-01-11 08:13:09'),
+(6001, 6, 'https://img.meituan.net/msmerchant/9f8a966d60ffba00daf35458522273ca658239.jpg', 'env', '店内用餐环境', 1, '2021-12-22 11:24:53', '2022-01-11 08:13:09'),
+(6002, 6, 'https://img.meituan.net/msmerchant/ef9ca5ef6c05d381946fe4a9aa7d9808554502.jpg', 'dish', '铜锅涮肉特写', 2, '2021-12-22 11:24:53', '2022-01-11 08:13:09'),
+
+-- 炉鱼(拱墅万达广场店) (shop_id=7) — 烤鱼
+(7000, 7, 'https://img.meituan.net/msmerchant/909434939a49b36f340523232924402166854.jpg', 'cover', '炉鱼门头', 0, '2021-12-22 11:40:52', '2022-01-11 08:13:19'),
+(7001, 7, 'https://img.meituan.net/msmerchant/32fd2425f12e27db0160e837461c10303700032.jpg', 'env', '店内环境', 1, '2021-12-22 11:40:52', '2022-01-11 08:13:19'),
+(7002, 7, 'https://img.meituan.net/msmerchant/f7022258ccb8dabef62a0514d3129562871160.jpg', 'dish', '招牌烤鱼', 2, '2021-12-22 11:40:52', '2022-01-11 08:13:19'),
+
+-- 浅草屋寿司（运河上街店）(shop_id=8) — 日料
+(8000, 8, 'https://img.meituan.net/msmerchant/cf3dff697bf7f6e11f4b79c4e7d989e4591290.jpg', 'cover', '浅草屋寿司门头', 0, '2021-12-22 11:51:06', '2022-01-11 08:13:25'),
+(8001, 8, 'https://img.meituan.net/msmerchant/0b463f545355c8d8f021eb2987dcd0c8567811.jpg', 'dish', '寿司拼盘', 1, '2021-12-22 11:51:06', '2022-01-11 08:13:25'),
+(8002, 8, 'https://img.meituan.net/msmerchant/c3c2516939efaf36c4ccc64b0e629fad587907.jpg', 'env', '店内环境', 2, '2021-12-22 11:51:06', '2022-01-11 08:13:25'),
+
+-- 羊老三羊蝎子牛仔排北派炭火锅(运河上街店) (shop_id=9) — 火锅
+(9000, 9, 'https://p0.meituan.net/biztone/163160492_1624251899456.jpeg', 'cover', '羊老三火锅门头', 0, '2021-12-22 11:53:59', '2022-01-11 08:13:34'),
+(9001, 9, 'https://img.meituan.net/msmerchant/e478eb16f7e31a7f8b29b5e3bab6de205500837.jpg', 'dish', '羊蝎子锅底', 1, '2021-12-22 11:53:59', '2022-01-11 08:13:34'),
+(9002, 9, 'https://img.meituan.net/msmerchant/6173eb1d18b9d70ace7fdb3f2dd939662884857.jpg', 'env', '炭火锅大厅', 2, '2021-12-22 11:53:59', '2022-01-11 08:13:34'),
+
+-- 开乐迪KTV（运河上街店）(shop_id=10) — KTV
+(10000, 10, 'https://p0.meituan.net/joymerchant/a575fd4adb0b9099c5c410058148b307-674435191.jpg', 'cover', '开乐迪KTV门头', 0, '2021-12-22 12:25:16', '2021-12-22 12:25:16'),
+(10001, 10, 'https://p0.meituan.net/merchantpic/68f11bf850e25e437c5f67decfd694ab2541634.jpg', 'env', '包厢环境', 1, '2021-12-22 12:25:16', '2021-12-22 12:25:16'),
+(10002, 10, 'https://p0.meituan.net/dpdeal/cb3a12225860ba2875e4ea26c6d14fcc197016.jpg', 'env', '大堂', 2, '2021-12-22 12:25:16', '2021-12-22 12:25:16'),
+
+-- INLOVE KTV(水晶城店) (shop_id=11) — KTV
+(11000, 11, 'https://p0.meituan.net/dpmerchantpic/53e74b200211d68988a4f02ae9912c6c1076826.jpg', 'cover', 'INLOVE KTV门头', 0, '2021-12-22 12:29:02', '2021-12-22 12:39:00'),
+(11001, 11, 'https://qcloud.dpfile.com/pc/4iWtIvzLzwM2MGgyPu1PCDb4SWEaKqUeHm--YAt1EwR5tn8kypBcqNwHnjg96EvT_Gd2X_f-v9T8Yj4uLt25Gg.jpg', 'env', '时尚包厢', 1, '2021-12-22 12:29:02', '2021-12-22 12:39:00'),
+(11002, 11, 'https://qcloud.dpfile.com/pc/WZsJWRI447x1VG2x48Ujgu7vwqksi_9WitdKI4j3jvIgX4MZOpGNaFtM93oSSizbGybIjx5eX6WNgCPvcASYAw.jpg', 'env', '走廊环境', 2, '2021-12-22 12:29:02', '2021-12-22 12:39:00'),
+
+-- 魅(杭州远洋乐堤港店) (shop_id=12) — KTV
+(12000, 12, 'https://p0.meituan.net/dpmerchantpic/63833f6ba0393e2e8722420ef33f3d40466664.jpg', 'cover', '魅KTV门头', 0, '2021-12-22 12:34:34', '2021-12-22 12:34:34'),
+(12001, 12, 'https://p0.meituan.net/dpmerchantpic/ae3c94cc92c529c4b1d7f68cebed33fa105810.png', 'env', '包厢环境', 1, '2021-12-22 12:34:34', '2021-12-22 12:34:34'),
+
+-- 讴K拉量贩KTV(北城天地店) (shop_id=13) — KTV
+(13000, 13, 'https://p1.meituan.net/merchantpic/598c83a8c0d06fe79ca01056e214d345875600.jpg', 'cover', '讴K拉量贩KTV门头', 0, '2021-12-22 12:38:54', '2021-12-22 12:40:04'),
+(13001, 13, 'https://qcloud.dpfile.com/pc/HhvI0YyocYHRfGwJWqPQr34hRGRl4cWdvlNwn3dqghvi4WXlM2FY1te0-7pE3Wb9_Gd2X_f-v9T8Yj4uLt25Gg.jpg', 'env', '大厅', 1, '2021-12-22 12:38:54', '2021-12-22 12:40:04'),
+(13002, 13, 'https://qcloud.dpfile.com/pc/F5ZVzZaXFE27kvQzPnaL4V8O9QCpVw2nkzGrxZE8BqXgkfyTpNExfNG5CEPQX4pjGybIjx5eX6WNgCPvcASYAw.jpg', 'env', '包厢', 2, '2021-12-22 12:38:54', '2021-12-22 12:40:04'),
+
+-- 星聚会KTV(拱墅区万达店) (shop_id=14) — KTV
+(14000, 14, 'https://p0.meituan.net/dpmerchantpic/f4cd6d8d4eb1959c3ea826aa05a552c01840451.jpg', 'cover', '星聚会KTV门头', 0, '2021-12-22 12:48:54', '2021-12-22 12:48:54'),
+(14001, 14, 'https://p0.meituan.net/dpmerchantpic/2efc07aed856a8ab0fc75c86f4b9b0061655777.jpg', 'env', '包厢环境', 1, '2021-12-22 12:48:54', '2021-12-22 12:48:54'),
+(14002, 14, 'https://qcloud.dpfile.com/pc/zWfzzIorCohKT0bFwsfAlHuayWjI6DBEMPHHncmz36EEMU9f48PuD9VxLLDAjdoU_Gd2X_f-v9T8Yj4uLt25Gg.jpg', 'env', '前台大堂', 2, '2021-12-22 12:48:54', '2021-12-22 12:48:54');
+
+-- -----------------------------------------------------------
 -- Table: tb_shop_type (分类) — PRD §5.1: 新增 parent_id 构建两级分类树
 -- -----------------------------------------------------------
 DROP TABLE IF EXISTS `tb_shop_type`;

@@ -1,8 +1,10 @@
 import json
 
+import httpx
 import pytest
 
 from src.storage.milvus_store import COLLECTION_SHOP_DESC
+from dashscope import MultiModalEmbeddingItemImage, MultiModalEmbeddingItemText
 from src.storage.shop_sync import (
     build_embedding_text,
     build_multimodal_input,
@@ -58,8 +60,8 @@ class TestBuildEmbeddingText:
         assert "正宗川味火锅" in text
         assert "停车方便" in text
         assert "家庭聚餐" in text
-        assert "img1.jpg" in text
-        assert "img2.jpg" in text
+        # Image URLs are NOT in build_embedding_text — they're separate
+        # MultiModalEmbeddingItemImage items in build_multimodal_input
 
     def test_build_multimodal_input_includes_local_image(self, tmp_path):
         image = tmp_path / "photo.jpg"
@@ -69,10 +71,11 @@ class TestBuildEmbeddingText:
 
         items = build_multimodal_input(shop, tmp_path)
 
-        assert items[0]["type"] == "text"
+        assert isinstance(items[0], MultiModalEmbeddingItemText)
+        assert items[0].text  # text content is non-empty
         assert len(items) == 2
-        assert items[1]["type"] == "image_url"
-        assert items[1]["image_url"]["url"].startswith("data:image/jpeg;base64,")
+        assert isinstance(items[1], MultiModalEmbeddingItemImage)
+        assert items[1].image == str(image)
 
 
 class TestToMilvusRecord:
@@ -146,29 +149,29 @@ class TestFetchShops:
 
 
 class TestEmbedShopMultimodal:
-    def test_embed_shop_posts_multimodal_payload_and_returns_vector(self):
-        import httpx
+    def test_embed_shop_calls_multimodal_api_and_returns_vector(self):
+        from unittest.mock import MagicMock, patch
 
         shop = sample_shop(1)
 
-        def handler(request: httpx.Request) -> httpx.Response:
-            body = json.loads(request.content)
-            assert body["model"] == "doubao-embedding-vision-250615"
-            assert body["input"][0]["type"] == "text"
-            assert "店铺1" in body["input"][0]["text"]
-            return httpx.Response(
-                200,
-                json={"data": {"embedding": [0.5, 0.6, 0.7]}},
-            )
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_embedding = MagicMock()
+        mock_embedding.embedding = [0.5, 0.6, 0.7]
+        mock_response.output.embeddings = [mock_embedding]
 
-        transport = httpx.MockTransport(handler)
-        with httpx.Client(transport=transport, base_url="https://ark.example.com/api/v3") as client:
+        with patch(
+            "src.storage.shop_sync.MultiModalEmbedding.call",
+            return_value=mock_response,
+        ) as mock_call:
             vector = embed_shop_multimodal(
                 shop,
                 api_key="key",
-                base_url="https://ark.example.com/api/v3",
-                model="doubao-embedding-vision-250615",
-                client=client,
+                model="tongyi-embedding-vision-plus",
             )
 
         assert vector == [0.5, 0.6, 0.7]
+        mock_call.assert_called_once()
+        call_kwargs = mock_call.call_args.kwargs
+        assert call_kwargs["model"] == "tongyi-embedding-vision-plus"
+        assert call_kwargs["input"][0].text == build_embedding_text(shop)

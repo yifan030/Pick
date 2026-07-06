@@ -104,7 +104,11 @@ const queryShopById = async (shopId) => {
   try {
     const { data } = await getShopById(shopId)
     console.log('getShopByIddata', data)
-    data.images = data.images.split(',')
+    if (Array.isArray(data.imagesList) && data.imagesList.length > 0) {
+      data.images = data.imagesList.map(img => img.url || '')
+    } else if (typeof data.images === 'string') {
+      data.images = data.images.split(',')
+    }
     shop.value = data
   } catch (error) {
     console.error(error)

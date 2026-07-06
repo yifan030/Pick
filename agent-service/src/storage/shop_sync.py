@@ -1,16 +1,21 @@
 """Shop description sync: fetch from Java → embed → upsert to Milvus.
 
 Pulls shop data via Java sync API, generates multimodal embeddings (text + images)
-via a compatible API, and upserts into the ``collection_shop_desc`` Milvus collection.
+via DashScope MultiModalEmbedding API, and upserts into the ``collection_shop_desc``
+Milvus collection.
 """
 
-import base64
 import json
 import os
 from collections.abc import Callable
 from pathlib import Path
 
-import httpx
+import dashscope
+from dashscope import (
+    MultiModalEmbedding,
+    MultiModalEmbeddingItemImage,
+    MultiModalEmbeddingItemText,
+)
 from pymilvus import MilvusClient
 
 from src.agent.services.java_client import get_java_client, retry_on_server_error
@@ -19,7 +24,15 @@ from src.storage.sync_cursor import SyncCursor
 
 BATCH_SIZE = 50
 CONTENT_TYPE = "shop_description"
-EMBEDDING_PATH = "/embeddings/multimodal"
+
+
+def _get_image_urls(shop: dict) -> list[str]:
+    """Extract image URLs from shop dict, supporting both old and new formats."""
+    images_list = shop.get("imagesList")
+    if images_list and isinstance(images_list, list):
+        return [img.get("url", "") for img in images_list if img.get("url")]
+    images = shop.get("images") or ""
+    return [img.strip() for img in images.split(",") if img.strip()]
 
 
 def build_embedding_text(shop: dict) -> str:
@@ -41,38 +54,28 @@ def build_embedding_text(shop: dict) -> str:
     if scenes:
         parts.append(", ".join(scenes))
 
-    images = shop.get("images")
-    if images:
-        for img in images.split(","):
-            img = img.strip()
-            if img:
-                parts.append(img)
-
     return "\n".join(parts)
 
 
-def build_multimodal_input(shop: dict, image_base_path: str | Path = "") -> list[dict]:
-    items: list[dict] = [{"type": "text", "text": build_embedding_text(shop)}]
+def build_multimodal_input(
+    shop: dict, image_base_path: str | Path = ""
+) -> list[MultiModalEmbeddingItemText | MultiModalEmbeddingItemImage]:
+    """Build multimodal input items for DashScope MultiModalEmbedding API.
+
+    Returns a list of text and image items. Image items use local file paths
+    directly — DashScope SDK handles file upload internally.
+    """
+    items: list[MultiModalEmbeddingItemText | MultiModalEmbeddingItemImage] = [
+        MultiModalEmbeddingItemText(build_embedding_text(shop), factor=1.0)
+    ]
     base = Path(image_base_path) if image_base_path else None
 
-    images = shop.get("images") or ""
-    for img in images.split(","):
-        img = img.strip()
-        if not img or base is None:
+    for img_url in _get_image_urls(shop):
+        if base is None:
             continue
-        path = base / img
-        if not path.is_file():
-            continue
-        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-        suffix = path.suffix.lstrip(".").lower() or "jpeg"
-        if suffix == "jpg":
-            suffix = "jpeg"
-        items.append(
-            {
-                "type": "image_url",
-                "image_url": {"url": f"data:image/{suffix};base64,{encoded}"},
-            }
-        )
+        path = base / img_url
+        if path.is_file():
+            items.append(MultiModalEmbeddingItemImage(str(path), factor=1.0))
 
     return items
 
@@ -116,44 +119,27 @@ def embed_shop_multimodal(
     shop: dict,
     *,
     api_key: str,
-    base_url: str,
     model: str,
     image_base_path: str | Path = "",
-    client: httpx.Client | None = None,
 ) -> list[float]:
-    payload = {
-        "model": model,
-        "input": build_multimodal_input(shop, image_base_path),
-    }
-    url = f"{base_url.rstrip('/')}{EMBEDDING_PATH}"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "x-ark-vlm1": "true",
-    }
+    """Generate multimodal embedding for a shop via DashScope MultiModalEmbedding."""
+    items = build_multimodal_input(shop, image_base_path)
+    if not items:
+        raise ValueError(f"no multimodal input for shop {shop.get('shopId', shop.get('shop_id', 'unknown'))}")
 
-    if client is None:
-        with httpx.Client(timeout=60.0) as http:
-            response = http.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            body = response.json()
-    else:
-        response = client.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        body = response.json()
+    dashscope.api_key = api_key
+    response = MultiModalEmbedding.call(model=model, input=items)
 
-    data = body.get("data")
-    if isinstance(data, dict):
-        embedding = data.get("embedding")
-    elif isinstance(data, list) and data:
-        embedding = data[0].get("embedding")
-    else:
-        embedding = None
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"MultiModalEmbedding API error: code={response.code}, message={response.message}"
+        )
 
-    if not embedding:
-        raise RuntimeError(f"embedding response missing vector: {body}")
-
-    return embedding
+    output = response.output
+    if isinstance(output, dict):
+        embeddings = output.get("embeddings", [])
+        return embeddings[0].get("embedding", []) if embeddings else []
+    return output.embeddings[0].embedding
 
 
 def sync_shop_desc(
@@ -239,8 +225,8 @@ def run_full_shop_desc_sync(
     milvus_port: int | None = None,
     embedding_dim: int | None = None,
     embedding_api_key: str | None = None,
-    embedding_base_url: str | None = None,
     embedding_model: str | None = None,
+    multimodal_embedding_model: str | None = None,
     image_base_path: str | Path | None = None,
     full_resync: bool = False,
 ) -> int:
@@ -256,11 +242,14 @@ def run_full_shop_desc_sync(
     milvus_port = milvus_port or int(os.environ.get("MILVUS_PORT", "19530"))
     embedding_dim = embedding_dim or int(os.environ.get("EMBEDDING_DIM", "1024"))
     embedding_api_key = embedding_api_key or os.environ["EMBEDDING_API_KEY"]
-    embedding_base_url = embedding_base_url or os.environ["EMBEDDING_BASE_URL"]
     embedding_model = embedding_model or os.environ.get(
-        "EMBEDDING_MODEL", "doubao-embedding-vision-250615"
+        "MULTIMODAL_EMBEDDING_MODEL", "tongyi-embedding-vision-plus"
     )
-    image_base_path = image_base_path or os.environ.get("IMAGE_BASE_PATH", "")
+    image_base_path = (
+        image_base_path
+        if image_base_path is not None
+        else os.environ.get("IMAGE_BASE_PATH", "")
+    )
 
     cursor = SyncCursor("shop_desc")
     since = 0 if full_resync else cursor.last_synced_at
@@ -271,7 +260,6 @@ def run_full_shop_desc_sync(
         return embed_shop_multimodal(
             shop,
             api_key=embedding_api_key,
-            base_url=embedding_base_url,
             model=embedding_model,
             image_base_path=image_base_path,
         )

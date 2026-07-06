@@ -2,6 +2,7 @@ package org.xu.dto;
 
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class ShopSyncDTO {
@@ -17,6 +18,7 @@ public class ShopSyncDTO {
     private Integer score;
     private String openHours;
     private String images;
+    private List<ShopImageDTO> imagesList;
     private String description;
     private String tags;
     private String recommendedScenes;

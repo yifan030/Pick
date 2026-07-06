@@ -122,7 +122,13 @@ const queryShops = async () => {
   try {
     const { data } = await getShopList(params.value)
     if (!data) return
-    data.forEach((s) => (s.images = s.images.split(',')[0]))
+    data.forEach((s) => {
+      if (Array.isArray(s.imagesList) && s.imagesList.length > 0) {
+        s.images = s.imagesList[0]?.url || ''
+      } else if (typeof s.images === 'string') {
+        s.images = s.images.split(',')[0]
+      }
+    })
     shops.value = shops.value.concat(data)
   } catch (error) {
     console.error(error)

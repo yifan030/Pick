@@ -14,7 +14,7 @@ public interface ShopMapper extends BaseMapper<Shop> {
             + " st_main.name AS type, st_sub.name AS subType,"
             + " s.area, s.address, s.longitude, s.latitude,"
             + " s.avg_price AS avgPrice, s.score,"
-            + " s.open_hours AS openHours, s.images,"
+            + " s.open_hours AS openHours,"
             + " s.description, s.tags, s.recommended_scenes AS recommendedScenes,"
             + " s.update_time AS updateTime "
             + "FROM tb_shop s "
