@@ -1,7 +1,7 @@
 # tests/memory/test_consolidation.py
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from src.memory.consolidation import ConsolidationJob
+from src.memory.profile.consolidation import ConsolidationJob
 from src.storage.models import CuisinePreference
 
 

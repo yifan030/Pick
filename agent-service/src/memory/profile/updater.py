@@ -36,7 +36,7 @@ from src.storage.models import (
     ConstraintPreference,
 )
 from src.memory.prompts import PROFILE_UPDATE_PROMPT
-from src.memory.feedback_fallback import detect_implicit_feedback
+from src.memory.profile.feedback import detect_implicit_feedback
 
 logger = logging.getLogger("pick.memory.profile_updater")
 

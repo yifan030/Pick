@@ -1,7 +1,7 @@
 """Tests for ProfileUpdater."""
 import pytest
 from unittest.mock import MagicMock
-from src.memory.profile_updater import ProfileUpdater
+from src.memory.profile.updater import ProfileUpdater
 from src.storage.models import (
     TastePreference,
     CuisinePreference,

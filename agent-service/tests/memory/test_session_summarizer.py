@@ -1,7 +1,7 @@
 """Tests for SessionSummarizer."""
 import pytest
 from unittest.mock import MagicMock
-from src.memory.session_summarizer import SessionSummarizer
+from src.memory.session.summarizer import SessionSummarizer
 from src.storage.models import SessionSummary
 
 

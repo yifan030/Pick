@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.memory.user_control import MemoryControlHandler
+from src.memory.control.handler import MemoryControlHandler
 from src.storage.models import (
     AreaPreference,
     BudgetPreference,

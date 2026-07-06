@@ -2,7 +2,7 @@
 import pytest
 import time
 from unittest.mock import AsyncMock, MagicMock
-from src.memory.cleanup import CleanupJob
+from src.memory.lifecycle.cleanup import CleanupJob
 
 
 @pytest.fixture

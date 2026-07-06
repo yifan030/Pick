@@ -14,8 +14,8 @@ from pydantic import BaseModel
 from src.agent.agent import create_pick_agent
 from src.agent.stream.sse import _sse, stream_agent_response
 from src.memory.pipeline import MemoryPipeline
-from src.memory.user_control import MemoryControlHandler
-from src.memory.cold_start import ColdStartManager
+from src.memory.control.handler import MemoryControlHandler
+from src.memory.profile.cold_start import ColdStartManager
 from src.retrieval.gateway import RetrievalGateway
 from src.retrieval.prompt_builder import PromptBuilder
 from src.storage.postgres_saver import PostgresSaverManager

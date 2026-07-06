@@ -1,7 +1,7 @@
 """Tests for VectorPreFilter."""
 import pytest
 from unittest.mock import MagicMock, patch
-from src.memory.pre_filter import VectorPreFilter
+from src.memory.event.pre_filter import VectorPreFilter
 from src.storage.models import (
     MemoryEvent, TastePreference, CuisinePreference, DietaryPreference
 )

@@ -1,7 +1,7 @@
 """Tests for AgentCaseExtractor."""
 import pytest
 from unittest.mock import MagicMock
-from src.memory.agent_case_extractor import AgentCaseExtractor
+from src.memory.case.extractor import AgentCaseExtractor
 from src.storage.models import AgentCase
 
 

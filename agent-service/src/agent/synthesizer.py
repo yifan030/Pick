@@ -309,7 +309,7 @@ def synthesizer_node(
     # -- Write resolved deltas to Neo4j (best-effort) -----------------------
     if neo4j_client is not None:
         try:
-            from src.memory.profile_updater import ProfileUpdater
+            from src.memory.profile.updater import ProfileUpdater
 
             # Always pass neo4j_client, plus the pipeline's model if available.
             model_kwargs = {}
@@ -377,7 +377,7 @@ def _deltas_to_operations(resolved_deltas: list[dict]) -> list[Any]:
         target_id = delta.get("target_id")
 
         # Try to construct the appropriate profile atom.
-        from src.memory.profile_updater import ProfileUpdater
+        from src.memory.profile.updater import ProfileUpdater
 
         profile_atom = None
         if new_value and target_type:

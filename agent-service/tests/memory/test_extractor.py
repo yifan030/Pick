@@ -1,7 +1,7 @@
 """Tests for EventExtractor."""
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from src.memory.extractor import EventExtractor
+from src.memory.event.extractor import EventExtractor
 from src.storage.models import MemoryEvent
 
 

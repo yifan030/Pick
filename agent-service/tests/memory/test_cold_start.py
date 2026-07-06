@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.memory.cold_start import ColdStartManager
+from src.memory.profile.cold_start import ColdStartManager
 from src.storage.models import (
     AreaPreference,
     BudgetPreference,

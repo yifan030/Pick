@@ -17,12 +17,12 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-from src.memory.extractor import EventExtractor
-from src.memory.pre_filter import VectorPreFilter
-from src.memory.profile_updater import ProfileUpdater
-from src.memory.session_summarizer import SessionSummarizer
-from src.memory.agent_case_extractor import AgentCaseExtractor
-from src.memory.audit import AuditLogger
+from src.memory.event.extractor import EventExtractor
+from src.memory.event.pre_filter import VectorPreFilter
+from src.memory.profile.updater import ProfileUpdater
+from src.memory.session.summarizer import SessionSummarizer
+from src.memory.case.extractor import AgentCaseExtractor
+from src.memory.audit.logger import AuditLogger
 from src.storage.embedding import embed_texts
 
 logger = logging.getLogger("pick.memory.pipeline")

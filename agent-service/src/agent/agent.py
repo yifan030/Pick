@@ -15,7 +15,7 @@ from src.agent.synthesizer import synthesizer_node
 from src.agent.workers.restaurant import create_worker_restaurant
 from src.agent.workers.voucher import create_worker_voucher
 from src.agent.workers.chat import create_worker_chat
-from src.memory.user_control import MemoryControlHandler
+from src.memory.control.handler import MemoryControlHandler
 
 logger = logging.getLogger("pick.agent")
 
