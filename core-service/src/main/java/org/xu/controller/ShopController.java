@@ -4,7 +4,10 @@ package org.xu.controller;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 import org.xu.dto.Result;
+import org.xu.dto.SaveShopDTO;
+import org.xu.dto.UpdateShopDTO;
 import org.xu.entity.Shop;
 import org.xu.service.IShopService;
 import org.xu.utils.SystemConstants;
@@ -41,23 +44,22 @@ public class ShopController {
 
     /**
      * 新增商铺信息
-     * @param shop 商铺数据
+     * @param dto 商铺数据
      * @return 商铺id
      */
     @PostMapping
-    public Result saveShop(@RequestBody Shop shop) {
-        return shopService.saveShop(shop);
+    public Result saveShop(@Valid @RequestBody SaveShopDTO dto) {
+        return shopService.saveShop(dto);
     }
 
     /**
      * 更新商铺信息
-     * @param shop 商铺数据
+     * @param dto 商铺数据
      * @return 无
      */
     @PutMapping
-    public Result updateShop(@RequestBody Shop shop) {
-        // 写入数据库
-        return shopService.update(shop);
+    public Result updateShop(@Valid @RequestBody UpdateShopDTO dto) {
+        return shopService.updateShop(dto);
     }
 
     /**

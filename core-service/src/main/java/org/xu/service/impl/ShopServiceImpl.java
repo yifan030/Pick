@@ -1,5 +1,7 @@
 package org.xu.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.date.LocalDateTimeUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -7,6 +9,8 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.xu.core.RedisKeyManage;
 import org.xu.dto.Result;
+import org.xu.dto.SaveShopDTO;
+import org.xu.dto.UpdateShopDTO;
 import org.xu.entity.Shop;
 import org.xu.handler.BloomFilterHandlerFactory;
 import org.xu.mapper.ShopMapper;
@@ -72,7 +76,14 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     
     
     @Override
-    public Result<Long> saveShop(final Shop shop) {
+    public Result<Long> saveShop(final SaveShopDTO dto) {
+        // DTO → Entity
+        Shop shop = new Shop();
+        BeanUtil.copyProperties(dto, shop);
+        // 默认值：新店无图片、无销量、无评论
+        shop.setImages(StrUtil.blankToDefault(dto.getImages(), ""));
+        shop.setSold(0);
+        shop.setComments(0);
         // 写入数据库
         shop.setId(snowflakeIdGenerator.nextId());
         save(shop);
@@ -162,14 +173,28 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
     @Override
     @Transactional
-    public Result update(Shop shop) {
-        Long id = shop.getId();
-        if (id == null) {
-            return Result.fail("店铺id不能为空");
+    public Result updateShop(final UpdateShopDTO dto) {
+        Long id = dto.getId();
+        // 只更新非空字段
+        var update = lambdaUpdate().eq(Shop::getId, id);
+        boolean hasUpdate = false;
+        if (dto.getName() != null) { update.set(Shop::getName, dto.getName()); hasUpdate = true; }
+        if (dto.getTypeId() != null) { update.set(Shop::getTypeId, dto.getTypeId()); hasUpdate = true; }
+        if (dto.getImages() != null) { update.set(Shop::getImages, dto.getImages()); hasUpdate = true; }
+        if (dto.getArea() != null) { update.set(Shop::getArea, dto.getArea()); hasUpdate = true; }
+        if (dto.getAddress() != null) { update.set(Shop::getAddress, dto.getAddress()); hasUpdate = true; }
+        if (dto.getLongitude() != null) { update.set(Shop::getLongitude, dto.getLongitude()); hasUpdate = true; }
+        if (dto.getLatitude() != null) { update.set(Shop::getLatitude, dto.getLatitude()); hasUpdate = true; }
+        if (dto.getAvgPrice() != null) { update.set(Shop::getAvgPrice, dto.getAvgPrice()); hasUpdate = true; }
+        if (dto.getScore() != null) { update.set(Shop::getScore, dto.getScore()); hasUpdate = true; }
+        if (dto.getOpenHours() != null) { update.set(Shop::getOpenHours, dto.getOpenHours()); hasUpdate = true; }
+        if (dto.getDescription() != null) { update.set(Shop::getDescription, dto.getDescription()); hasUpdate = true; }
+        if (dto.getTags() != null) { update.set(Shop::getTags, dto.getTags()); hasUpdate = true; }
+        if (dto.getRecommendedScenes() != null) { update.set(Shop::getRecommendedScenes, dto.getRecommendedScenes()); hasUpdate = true; }
+        if (hasUpdate) {
+            update.set(Shop::getUpdateTime, LocalDateTimeUtil.now()).update();
         }
-        // 1.更新数据库
-        updateById(shop);
-        // 2.删除缓存
+        // 删除缓存
         stringRedisTemplate.delete(CACHE_SHOP_KEY + id);
         return Result.ok();
     }
