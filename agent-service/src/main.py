@@ -1,5 +1,10 @@
 """FastAPI application for the Pick AI Shopping Guide agent."""
 
+# ── MUST be called before any src.* imports — those read env vars at module level ──
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import asyncio
 import json
 import logging
@@ -85,29 +90,38 @@ def _trigger_memory_extraction(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """FastAPI lifespan: 启动时初始化所有组件，关闭时清理资源."""
+    import os
+
     global _agent, _pipeline, _retrieval_gateway
 
     # ── PostgresSaver (Plan C) ──
     pg_manager = PostgresSaverManager()
     saver = None
-    try:
-        await pg_manager.setup()
-        saver = pg_manager.create_saver()
-        logger.info("PostgresSaver initialized")
-    except Exception:
-        logger.exception("PostgresSaver init failed, falling back to InMemorySaver")
+    if os.getenv("POSTGRES_ENABLED", "true").lower() in ("true", "1", "yes"):
+        try:
+            await pg_manager.setup()
+            saver = pg_manager.create_saver()
+            logger.info("PostgresSaver initialized")
+        except Exception:
+            logger.exception("PostgresSaver init failed, falling back to InMemorySaver")
+    else:
+        logger.info("PostgresSaver skipped (POSTGRES_ENABLED=%s)", os.getenv("POSTGRES_ENABLED"))
 
     # ── Neo4j Client (Plan A) ──
-    neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-    neo4j_user = os.getenv("NEO4J_USER", "neo4j")
-    neo4j_password = os.getenv("NEO4J_PASSWORD", "neo4j123")
-    neo4j_client = Neo4jClient(uri=neo4j_uri, user=neo4j_user, password=neo4j_password)
-    try:
-        await neo4j_client.connect()
-        logger.info("Neo4jClient connected: %s", neo4j_uri)
-    except Exception:
-        logger.exception("Neo4jClient init failed, falling back to None")
-        neo4j_client = None
+    neo4j_client = None
+    if os.getenv("NEO4J_ENABLED", "true").lower() in ("true", "1", "yes"):
+        neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        neo4j_user = os.getenv("NEO4J_USER", "neo4j")
+        neo4j_password = os.getenv("NEO4J_PASSWORD", "neo4j123")
+        neo4j_client = Neo4jClient(uri=neo4j_uri, user=neo4j_user, password=neo4j_password)
+        try:
+            await neo4j_client.connect()
+            logger.info("Neo4jClient connected: %s", neo4j_uri)
+        except Exception:
+            logger.exception("Neo4jClient init failed, falling back to None")
+            neo4j_client = None
+    else:
+        logger.info("Neo4jClient skipped (NEO4J_ENABLED=%s)", os.getenv("NEO4J_ENABLED"))
 
     # ── Milvus Memory Store (Plan A) ──
     milvus_host = os.getenv("MILVUS_HOST", "localhost")
@@ -161,7 +175,6 @@ async def lifespan(app: FastAPI):
     logger.info("Agent initialized successfully")
 
     # ── Feedback Consumer (Kafka) ──
-    import os
     from src.retrieval.feedback_consumer import FeedbackConsumer
 
     kafka_bootstrap = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
@@ -184,6 +197,8 @@ async def lifespan(app: FastAPI):
         app.state.feedback_task = None
 
     app.state.pg_manager = pg_manager
+    app.state.neo4j_client = neo4j_client
+    app.state.milvus_store = milvus_store
     yield
     logger.info("Shutting down Pick AI agent...")
     try:
@@ -408,6 +423,88 @@ async def chat_resume(request: ChatRequest, agent=Depends(get_agent)):
         media_type="text/event-stream",
         headers={"content-type": "text/event-stream"},
     )
+
+
+# ── Sync Request Schema ────────────────────────────────────────────────
+
+
+class SyncRequest(BaseModel):
+    full_resync: bool = False
+
+
+# ── Sync Endpoints ─────────────────────────────────────────────────────
+
+
+@app.post("/sync/shops")
+async def sync_shops(request: SyncRequest):
+    """触发店铺描述全量/增量同步 → Milvus（多模态 embedding）。
+
+    从 Java 后端拉取店铺数据，通过 DashScope MultiModalEmbedding
+    生成多模态向量（文本 + 图片），写入 Milvus collection_shop_desc。
+    """
+    milvus_store = getattr(app.state, "milvus_store", None)
+    if milvus_store is None:
+        return {"status": "error", "message": "Milvus store not available"}
+
+    from src.storage.shop_sync import run_full_shop_desc_sync
+
+    async def _run():
+        try:
+            count = run_full_shop_desc_sync(full_resync=request.full_resync)
+            logger.info("Shop sync completed: %d shops synced", count)
+        except Exception:
+            logger.exception("Shop sync failed")
+
+    asyncio.create_task(_run())
+    return {"status": "started", "message": "Shop sync triggered", "full_resync": request.full_resync}
+
+
+@app.post("/sync/blogs")
+async def sync_blogs(request: SyncRequest):
+    """触发探店笔记全量/增量同步 → Milvus（文本 embedding）。
+
+    从 Java 后端拉取博客/笔记数据，通过 DashScope TextEmbedding
+    生成文本向量，写入 Milvus collection_user_note。
+    """
+    milvus_store = getattr(app.state, "milvus_store", None)
+    if milvus_store is None:
+        return {"status": "error", "message": "Milvus store not available"}
+
+    from src.storage.user_note_sync import run_full_user_note_sync
+
+    async def _run():
+        try:
+            count = run_full_user_note_sync(full_resync=request.full_resync)
+            logger.info("Blog sync completed: %d blogs synced", count)
+        except Exception:
+            logger.exception("Blog sync failed")
+
+    asyncio.create_task(_run())
+    return {"status": "started", "message": "Blog sync triggered", "full_resync": request.full_resync}
+
+
+@app.post("/sync/entities")
+async def sync_entities(request: SyncRequest):
+    """触发实体图谱同步 → Neo4j（Shops + Areas + Categories）。
+
+    从 Java 同步端点拉取店铺 → 提取区域和品类 → 在 Neo4j 中
+    创建/更新 Shop、Area、Category 节点及关系。
+    """
+    neo4j_client = getattr(app.state, "neo4j_client", None)
+    if neo4j_client is None:
+        return {"status": "error", "message": "Neo4j client not available — check NEO4J_ENABLED and connection"}
+
+    from src.sync.entity_sync import sync_all_entities
+
+    async def _run():
+        try:
+            counts = await sync_all_entities(neo4j_client)
+            logger.info("Entity sync completed: %s", counts)
+        except Exception:
+            logger.exception("Entity sync failed")
+
+    asyncio.create_task(_run())
+    return {"status": "started", "message": "Entity sync triggered", "full_resync": request.full_resync}
 
 
 @app.get("/health")

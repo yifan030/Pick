@@ -254,7 +254,7 @@ def run_full_shop_desc_sync(
     cursor = SyncCursor("shop_desc")
     since = 0 if full_resync else cursor.last_synced_at
 
-    milvus_client = _init_product_milvus(embedding_dim, host=milvus_host, port=milvus_port)
+    milvus_client = _init_product_milvus(host=milvus_host, port=milvus_port, dim=embedding_dim)
 
     def embed(shop: dict) -> list[float]:
         return embed_shop_multimodal(
