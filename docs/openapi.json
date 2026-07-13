@@ -1,0 +1,2375 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Pick 本地生活服务平台 API",
+    "description": "Pick 是一个本地生活服务平台（类似大众点评/美团），提供商铺浏览、探店笔记、优惠券秒杀、AI 购物助手等功能。\n\n## 认证说明\n- 普通接口使用 **sa-token** 会话认证（Cookie/Header）\n- 内部接口使用 `X-Internal-Token` Header 认证\n\n## 通用响应格式\n所有接口统一返回 `Result<T>` 结构：\n```json\n{\n  \"success\": true,\n  \"errorMsg\": null,\n  \"data\": {},\n  \"total\": null\n}\n```",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Pick Team"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8085",
+      "description": "本地开发环境"
+    }
+  ],
+  "tags": [
+    { "name": "商铺管理", "description": "商铺信息增删改查" },
+    { "name": "探店笔记", "description": "博客/探店笔记的发布、点赞、查询" },
+    { "name": "优惠券管理", "description": "普通券和秒杀券的创建、查询、订阅" },
+    { "name": "优惠券订单", "description": "秒杀下单、订单查询、取消、对账" },
+    { "name": "用户管理", "description": "登录、注册、用户信息、签到" },
+    { "name": "关注管理", "description": "用户关注/取关、共同关注" },
+    { "name": "商铺类型", "description": "商铺分类查询" },
+    { "name": "文件上传", "description": "博客图片上传与删除" },
+    { "name": "AI 对话", "description": "AI 购物助手 SSE 流式对话" },
+    { "name": "收藏管理 (内部)", "description": "收藏/取消收藏商铺" },
+    { "name": "订单管理 (内部)", "description": "订单状态查询、退款" },
+    { "name": "预订管理 (内部)", "description": "排队取号、电话预约" },
+    { "name": "代下单 (内部)", "description": "内部代下单接口" },
+    { "name": "数据同步", "description": "供 Python Agent 服务同步商铺/博客数据" },
+    { "name": "测试", "description": "测试与监控端点" }
+  ],
+  "paths": {
+    "/shop/{id}": {
+      "get": {
+        "tags": ["商铺管理"],
+        "summary": "根据 ID 查询商铺信息",
+        "operationId": "queryShopById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "商铺 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Shop" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shop": {
+      "post": {
+        "tags": ["商铺管理"],
+        "summary": "新增商铺信息",
+        "operationId": "saveShop",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Shop" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功，返回商铺 ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "integer", "format": "int64" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["商铺管理"],
+        "summary": "更新商铺信息",
+        "operationId": "updateShop",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Shop" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shop/of/type": {
+      "get": {
+        "tags": ["商铺管理"],
+        "summary": "根据商铺类型分页查询",
+        "description": "支持按坐标计算距离排序",
+        "operationId": "queryShopByType",
+        "parameters": [
+          {
+            "name": "typeId",
+            "in": "query",
+            "required": true,
+            "description": "商铺类型 ID",
+            "schema": { "type": "integer", "example": 1 }
+          },
+          {
+            "name": "current",
+            "in": "query",
+            "required": false,
+            "description": "页码（从 1 开始）",
+            "schema": { "type": "integer", "default": 1, "example": 1 }
+          },
+          {
+            "name": "longitude",
+            "in": "query",
+            "required": false,
+            "description": "用户经度（用于距离排序）",
+            "schema": { "type": "number", "format": "double", "example": 104.0657 }
+          },
+          {
+            "name": "latitude",
+            "in": "query",
+            "required": false,
+            "description": "用户纬度（用于距离排序）",
+            "schema": { "type": "number", "format": "double", "example": 30.6574 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回商铺列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Shop" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shop/of/name": {
+      "get": {
+        "tags": ["商铺管理"],
+        "summary": "根据名称关键字搜索商铺",
+        "operationId": "queryShopByName",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "description": "商铺名称关键字",
+            "schema": { "type": "string", "example": "火锅" }
+          },
+          {
+            "name": "current",
+            "in": "query",
+            "required": false,
+            "description": "页码（从 1 开始）",
+            "schema": { "type": "integer", "default": 1, "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回商铺列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Shop" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shop-type/list": {
+      "get": {
+        "tags": ["商铺类型"],
+        "summary": "查询所有商铺类型列表",
+        "description": "按 sort 字段升序排列，支持两级分类树（通过 parentId）",
+        "operationId": "queryShopTypeList",
+        "responses": {
+          "200": {
+            "description": "成功，返回类型列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/ShopType" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/blog": {
+      "post": {
+        "tags": ["探店笔记"],
+        "summary": "发布探店笔记",
+        "description": "需要登录",
+        "operationId": "saveBlog",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Blog" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "integer", "format": "int64", "description": "博客 ID" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/blog/like/{id}": {
+      "put": {
+        "tags": ["探店笔记"],
+        "summary": "点赞/取消点赞博客",
+        "description": "需要登录。同一用户重复请求会切换点赞状态",
+        "operationId": "likeBlog",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "博客 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/blog/of/me": {
+      "get": {
+        "tags": ["探店笔记"],
+        "summary": "查询我的笔记",
+        "description": "需要登录",
+        "operationId": "queryMyBlog",
+        "parameters": [
+          {
+            "name": "current",
+            "in": "query",
+            "required": false,
+            "description": "页码（从 1 开始）",
+            "schema": { "type": "integer", "default": 1, "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回博客列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Blog" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/blog/hot": {
+      "get": {
+        "tags": ["探店笔记"],
+        "summary": "查询热门笔记",
+        "description": "按点赞数排序",
+        "operationId": "queryHotBlog",
+        "parameters": [
+          {
+            "name": "current",
+            "in": "query",
+            "required": false,
+            "description": "页码（从 1 开始）",
+            "schema": { "type": "integer", "default": 1, "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回博客列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Blog" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/blog/{id}": {
+      "get": {
+        "tags": ["探店笔记"],
+        "summary": "根据 ID 查询博客详情",
+        "operationId": "queryBlogById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "博客 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Blog" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/blog/likes/{id}": {
+      "get": {
+        "tags": ["探店笔记"],
+        "summary": "查询博客点赞用户列表",
+        "description": "按点赞时间倒序返回前 5 个用户",
+        "operationId": "queryBlogLikes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "博客 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回点赞用户列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserDTO" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/blog/of/user": {
+      "get": {
+        "tags": ["探店笔记"],
+        "summary": "根据用户 ID 查询其笔记列表",
+        "operationId": "queryBlogByUserId",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "description": "用户 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          },
+          {
+            "name": "current",
+            "in": "query",
+            "required": false,
+            "description": "页码（从 1 开始）",
+            "schema": { "type": "integer", "default": 1, "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回博客列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Blog" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/blog/of/follow": {
+      "get": {
+        "tags": ["探店笔记"],
+        "summary": "查询关注用户的笔记（滚动分页）",
+        "description": "需要登录。使用 lastId + offset 滚动分页",
+        "operationId": "queryBlogOfFollow",
+        "parameters": [
+          {
+            "name": "lastId",
+            "in": "query",
+            "required": true,
+            "description": "上一页最后一条记录的 ID（首次传 0 或最大值）",
+            "schema": { "type": "integer", "format": "int64", "example": 0 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "偏移量（同一时间戳下的重复条数）",
+            "schema": { "type": "integer", "default": 0, "example": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回 ScrollResult",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ScrollResult" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher/get": {
+      "post": {
+        "tags": ["优惠券管理"],
+        "summary": "查询秒杀券完整信息",
+        "operationId": "getSeckillVoucher",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GetSeckillVoucherDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/SeckillVoucherFullModel" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher/seckill": {
+      "post": {
+        "tags": ["优惠券管理"],
+        "summary": "新增秒杀优惠券",
+        "operationId": "addSeckillVoucher",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SeckillVoucherDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功，返回券 ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "integer", "format": "int64" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher/update/seckill": {
+      "post": {
+        "tags": ["优惠券管理"],
+        "summary": "更新秒杀优惠券",
+        "operationId": "updateSeckillVoucher",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateSeckillVoucherDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher/update/seckill/stock": {
+      "post": {
+        "tags": ["优惠券管理"],
+        "summary": "更新秒杀券库存",
+        "operationId": "updateSeckillVoucherStock",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateSeckillVoucherStockDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher": {
+      "post": {
+        "tags": ["优惠券管理"],
+        "summary": "新增普通优惠券",
+        "operationId": "addVoucher",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VoucherDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功，返回券 ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "integer", "format": "int64" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher/list/{shopId}": {
+      "get": {
+        "tags": ["优惠券管理"],
+        "summary": "查询商铺的所有优惠券",
+        "operationId": "queryVoucherOfShop",
+        "parameters": [
+          {
+            "name": "shopId",
+            "in": "path",
+            "required": true,
+            "description": "商铺 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Voucher" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher/subscribe": {
+      "post": {
+        "tags": ["优惠券管理"],
+        "summary": "订阅秒杀券提醒",
+        "description": "需要登录。秒杀开始前会收到提醒",
+        "operationId": "subscribeVoucher",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VoucherSubscribeDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher/unsubscribe": {
+      "post": {
+        "tags": ["优惠券管理"],
+        "summary": "取消订阅秒杀券提醒",
+        "description": "需要登录",
+        "operationId": "unsubscribeVoucher",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VoucherSubscribeDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher/get/subscribe/status": {
+      "post": {
+        "tags": ["优惠券管理"],
+        "summary": "查询单个券的订阅状态",
+        "description": "需要登录",
+        "operationId": "getSubscribeStatus",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VoucherSubscribeDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功，返回订阅状态（1=已订阅，0=未订阅）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "integer", "enum": [0, 1] } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher/get/subscribe/status/batch": {
+      "post": {
+        "tags": ["优惠券管理"],
+        "summary": "批量查询券的订阅状态",
+        "description": "需要登录",
+        "operationId": "getSubscribeStatusBatch",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VoucherSubscribeBatchDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功，返回订阅状态列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/GetSubscribeStatusVo" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher/delay/voucher/reminder": {
+      "post": {
+        "tags": ["优惠券管理"],
+        "summary": "延迟优惠券提醒",
+        "description": "需要登录",
+        "operationId": "delayVoucherReminder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DelayVoucherReminderDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher/available-by-shop-ids": {
+      "post": {
+        "tags": ["优惠券管理"],
+        "summary": "根据商铺 ID 列表查询可用优惠券",
+        "description": "支持内部调用（需 X-Internal-Token）和前端调用（需 sa-token 登录）",
+        "operationId": "queryAvailableByShopIds",
+        "parameters": [
+          {
+            "name": "X-Internal-Token",
+            "in": "header",
+            "required": false,
+            "description": "内部调用认证 Token",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VoucherAvailableRequestDTO" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功，按 shopId 分组的优惠券 Map",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "array",
+                            "items": { "$ref": "#/components/schemas/Voucher" }
+                          },
+                          "description": "key=shopId 字符串, value=该商铺的优惠券列表"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher/{id}": {
+      "get": {
+        "tags": ["优惠券管理"],
+        "summary": "根据 ID 查询优惠券",
+        "operationId": "getVoucherById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "优惠券 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Voucher" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher-order/seckill/token/{id}": {
+      "get": {
+        "tags": ["优惠券订单"],
+        "summary": "获取秒杀访问令牌",
+        "description": "需要登录。受频率限制，获取令牌后才能参与秒杀",
+        "operationId": "issueSeckillAccessToken",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "秒杀券 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回令牌字符串",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "string", "description": "秒杀令牌" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher-order/seckill/{id}": {
+      "post": {
+        "tags": ["优惠券订单"],
+        "summary": "秒杀下单",
+        "description": "需要登录。需先获取令牌（如果令牌功能开启）。通过 Lua 脚本原子扣减 Redis 库存",
+        "operationId": "seckillVoucher",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "秒杀券 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          },
+          {
+            "name": "accessToken",
+            "in": "query",
+            "required": false,
+            "description": "秒杀访问令牌",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回订单 ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "integer", "format": "int64", "description": "订单 ID" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher-order/get/seckill/voucher/order-id": {
+      "post": {
+        "tags": ["优惠券订单"],
+        "summary": "查询秒杀订单 ID（按 orderId）",
+        "operationId": "getSeckillVoucherOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GetVoucherOrderDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功，返回订单 ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "integer", "format": "int64" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher-order/get/seckill/voucher/order-id/by/voucher-id": {
+      "post": {
+        "tags": ["优惠券订单"],
+        "summary": "查询秒杀订单 ID（按 voucherId）",
+        "operationId": "getSeckillVoucherOrderIdByVoucherId",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GetVoucherOrderByVoucherIdDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功，返回订单 ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "integer", "format": "int64" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher-order/cancel": {
+      "post": {
+        "tags": ["优惠券订单"],
+        "summary": "取消秒杀订单",
+        "description": "取消后库存自动恢复并通知下一位排队用户",
+        "operationId": "cancelVoucherOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CancelVoucherOrderDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "boolean" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voucher-order/reconciliation/task/all": {
+      "post": {
+        "tags": ["优惠券订单"],
+        "summary": "手动触发全量对账任务",
+        "description": "管理员接口，对账 Redis 与 DB 的秒杀订单一致性",
+        "operationId": "reconciliationTaskAll",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/code": {
+      "post": {
+        "tags": ["用户管理"],
+        "summary": "发送手机验证码",
+        "description": "向指定手机号发送短信验证码",
+        "operationId": "sendCode",
+        "parameters": [
+          {
+            "name": "phone",
+            "in": "query",
+            "required": true,
+            "description": "手机号码",
+            "schema": { "type": "string", "example": "13800138000" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "string", "description": "验证码（开发环境直接返回）" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/login": {
+      "post": {
+        "tags": ["用户管理"],
+        "summary": "用户登录",
+        "description": "支持手机号+验证码 或 手机号+密码 两种方式",
+        "operationId": "login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginFormDTO" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功，返回 sa-token 令牌",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "string", "description": "sa-token 令牌" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/logout": {
+      "post": {
+        "tags": ["用户管理"],
+        "summary": "用户登出",
+        "description": "⚠ 功能未完成",
+        "operationId": "logout",
+        "responses": {
+          "200": {
+            "description": "失败（功能未完成）",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/me": {
+      "get": {
+        "tags": ["用户管理"],
+        "summary": "获取当前登录用户信息",
+        "description": "需要登录",
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/UserDTO" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/info/{id}": {
+      "get": {
+        "tags": ["用户管理"],
+        "summary": "查询用户详细信息",
+        "operationId": "getUserInfo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "用户 ID",
+            "schema": { "type": "string", "example": "1" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/UserInfo" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/level/update": {
+      "post": {
+        "tags": ["用户管理"],
+        "summary": "更新当前用户会员等级",
+        "description": "需要登录",
+        "operationId": "updateLevel",
+        "parameters": [
+          {
+            "name": "newLevel",
+            "in": "query",
+            "required": true,
+            "description": "新等级（0-9）",
+            "schema": { "type": "integer", "minimum": 0, "maximum": 9, "example": 3 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/{id}": {
+      "get": {
+        "tags": ["用户管理"],
+        "summary": "根据 ID 查询用户基本信息",
+        "operationId": "queryUserById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "用户 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/UserDTO" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/sign": {
+      "post": {
+        "tags": ["用户管理"],
+        "summary": "用户签到",
+        "description": "需要登录。使用 Redis Bitmap 记录签到",
+        "operationId": "sign",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/sign/count": {
+      "get": {
+        "tags": ["用户管理"],
+        "summary": "查询连续签到天数",
+        "description": "需要登录",
+        "operationId": "signCount",
+        "responses": {
+          "200": {
+            "description": "成功，返回连续签到天数",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "integer", "description": "连续签到天数" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/follow/{id}/{isFollow}": {
+      "put": {
+        "tags": ["关注管理"],
+        "summary": "关注/取消关注用户",
+        "description": "需要登录",
+        "operationId": "follow",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "目标用户 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 2 }
+          },
+          {
+            "name": "isFollow",
+            "in": "path",
+            "required": true,
+            "description": "true=关注，false=取消关注",
+            "schema": { "type": "boolean", "example": true }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/follow/or/not/{id}": {
+      "get": {
+        "tags": ["关注管理"],
+        "summary": "检查是否已关注某用户",
+        "description": "需要登录",
+        "operationId": "isFollow",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "目标用户 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 2 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回是否已关注",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "boolean" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/follow/common/{id}": {
+      "get": {
+        "tags": ["关注管理"],
+        "summary": "查询共同关注",
+        "description": "需要登录。查询当前用户和目标用户共同关注的用户列表",
+        "operationId": "followCommons",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "目标用户 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 2 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回共同关注用户列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserDTO" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/upload/blog": {
+      "post": {
+        "tags": ["文件上传"],
+        "summary": "上传博客图片",
+        "description": "支持 multipart/form-data 上传，最大 10MB",
+        "operationId": "uploadBlogImage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "图片文件（PNG/JPG/GIF/WebP）"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功，返回文件访问路径",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "string", "description": "文件路径，如 /blogs/a/b/uuid.png" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/upload/blog/delete": {
+      "get": {
+        "tags": ["文件上传"],
+        "summary": "删除博客图片",
+        "operationId": "deleteBlogImage",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "description": "文件名（上传时返回的路径）",
+            "schema": { "type": "string", "example": "/blogs/a/b/abc123.png" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/stream": {
+      "post": {
+        "tags": ["AI 对话"],
+        "summary": "AI 购物助手对话（SSE 流式）",
+        "description": "SSE 流式接口，透传到 Python Agent 服务。\n\n响应格式（SSE 事件流）：\n```\ndata: {\"type\":\"text\",\"content\":\"推荐您...\"}\n\ndata: {\"type\":\"shop_card\",\"content\":{...}}\n\ndata: {\"type\":\"done\"}\n```\n\n消息类型：`text`（文本块）、`shop_card`（商铺卡片）、`done`（结束）、`error`（错误）",
+        "operationId": "chatStream",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ChatRequestDTO" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SSE 事件流（text/event-stream）",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "SSE 格式的流式数据"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bookmarks/internal": {
+      "post": {
+        "tags": ["收藏管理 (内部)"],
+        "summary": "收藏商铺",
+        "description": "通过 JSON body 传入 user_id 和 shop_id",
+        "operationId": "bookmarkShop",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user_id", "shop_id"],
+                "properties": {
+                  "user_id": { "type": "integer", "format": "int64", "description": "用户 ID" },
+                  "shop_id": { "type": "integer", "format": "int64", "description": "商铺 ID" }
+                },
+                "example": { "user_id": 1, "shop_id": 10 }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功，返回收藏信息",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bookmarks/internal/{userId}": {
+      "get": {
+        "tags": ["收藏管理 (内部)"],
+        "summary": "查询用户收藏列表",
+        "operationId": "listBookmarks",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "用户 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回收藏列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "bookmark_id": { "type": "integer", "format": "int64" },
+                              "shop_id": { "type": "integer", "format": "int64" },
+                              "shop_name": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["收藏管理 (内部)"],
+        "summary": "取消收藏",
+        "operationId": "removeBookmark",
+        "parameters": [
+          {
+            "name": "bookmarkId",
+            "in": "path",
+            "required": true,
+            "description": "收藏记录 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": true,
+            "description": "用户 ID（用于校验）",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/internal/{orderId}": {
+      "get": {
+        "tags": ["订单管理 (内部)"],
+        "summary": "查询订单状态",
+        "operationId": "checkOrderStatus",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "订单 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回订单状态信息",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "order_id": { "type": "integer", "format": "int64" },
+                            "status": { "type": "integer" },
+                            "status_text": { "type": "string" },
+                            "pay_amount": { "type": "integer", "format": "int64" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/internal/user/{userId}": {
+      "get": {
+        "tags": ["订单管理 (内部)"],
+        "summary": "查询用户订单列表",
+        "operationId": "listUserOrders",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "description": "用户 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "订单状态筛选",
+            "schema": { "type": "string", "example": "paid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回订单列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "order_id": { "type": "integer", "format": "int64" },
+                              "voucher_id": { "type": "integer", "format": "int64" },
+                              "status": { "type": "integer" },
+                              "pay_amount": { "type": "integer", "format": "int64" },
+                              "create_time": { "type": "string", "format": "date-time" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/internal/{orderId}/refund": {
+      "post": {
+        "tags": ["订单管理 (内部)"],
+        "summary": "申请退款",
+        "operationId": "requestRefund",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "订单 ID",
+            "schema": { "type": "integer", "format": "int64", "example": 1 }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": { "type": "string", "description": "退款原因" }
+                },
+                "example": { "reason": "买错了" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Result" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reservations/internal": {
+      "post": {
+        "tags": ["预订管理 (内部)"],
+        "summary": "创建预订/排队",
+        "description": "支持两种类型：0=排队取号, 1=电话预约",
+        "operationId": "createReservation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user_id", "shop_id", "type"],
+                "properties": {
+                  "user_id": { "type": "integer", "format": "int64", "description": "用户 ID" },
+                  "shop_id": { "type": "integer", "format": "int64", "description": "商铺 ID" },
+                  "type": { "type": "integer", "enum": [0, 1], "description": "0=排队取号, 1=电话预约" },
+                  "guests": { "type": "integer", "description": "用餐人数", "default": 2 },
+                  "reserve_time": { "type": "string", "format": "date-time", "description": "预约时间" },
+                  "contact_phone": { "type": "string", "description": "联系电话" },
+                  "remark": { "type": "string", "description": "备注" }
+                },
+                "example": {
+                  "user_id": 1,
+                  "shop_id": 10,
+                  "type": 0,
+                  "guests": 4,
+                  "contact_phone": "13800138000"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "reservation_id": { "type": "integer", "format": "int64" },
+                            "type": { "type": "integer" },
+                            "queue_number": { "type": "integer" },
+                            "guests": { "type": "integer" },
+                            "status": { "type": "integer" },
+                            "message": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voucher-order/internal/{voucherId}": {
+      "post": {
+        "tags": ["代下单 (内部)"],
+        "summary": "内部代下单",
+        "description": "⚠ 秒杀券不支持代下单，仅普通券可用",
+        "operationId": "internalPlaceOrder",
+        "parameters": [
+          {
+            "name": "voucherId",
+            "in": "path",
+            "required": true,
+            "description": "优惠券 ID",
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user_id"],
+                "properties": {
+                  "user_id": { "type": "integer", "format": "int64", "description": "用户 ID" },
+                  "quantity": { "type": "integer", "description": "购买数量", "default": 1 }
+                },
+                "example": { "user_id": 1, "quantity": 2 }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功，返回订单信息",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "order_id": { "type": "integer", "format": "int64" },
+                            "message": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sync/shops": {
+      "get": {
+        "tags": ["数据同步"],
+        "summary": "增量同步商铺数据",
+        "description": "供 Python Agent 服务拉取商铺数据，返回指定时间戳之后更新的商铺（含图片列表）",
+        "operationId": "syncShops",
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "description": "Unix 毫秒时间戳，只返回此后更新的数据",
+            "schema": { "type": "integer", "format": "int64", "default": 0, "example": 1719907200000 }
+          },
+          {
+            "name": "X-Internal-Token",
+            "in": "header",
+            "required": false,
+            "description": "内部调用认证令牌（配置的 SYNC_INTERNAL_TOKEN）",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回商铺同步数据列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/ShopSyncDTO" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sync/blogs": {
+      "get": {
+        "tags": ["数据同步"],
+        "summary": "增量同步博客数据",
+        "description": "供 Python Agent 服务拉取博客数据，返回指定时间戳之后更新的博客（含用户昵称）",
+        "operationId": "syncBlogs",
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "description": "Unix 毫秒时间戳，只返回此后更新的数据",
+            "schema": { "type": "integer", "format": "int64", "default": 0, "example": 1719907200000 }
+          },
+          {
+            "name": "X-Internal-Token",
+            "in": "header",
+            "required": false,
+            "description": "内部调用认证令牌",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功，返回博客同步数据列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/BlogSyncDTO" } } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/test/meter": {
+      "get": {
+        "tags": ["测试"],
+        "summary": "测试 Micrometer 指标上报",
+        "operationId": "testMeter",
+        "responses": {
+          "200": {
+            "description": "成功，返回当前计数",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/Result" },
+                    { "type": "object", "properties": { "data": { "type": "string" } } }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Result": {
+        "type": "object",
+        "description": "统一响应体（Jackson 配置：non_null 字段不序列化）",
+        "properties": {
+          "success": { "type": "boolean", "description": "是否成功" },
+          "errorMsg": { "type": "string", "description": "错误信息（success=false 时有值）" },
+          "data": { "description": "业务数据" },
+          "total": { "type": "integer", "format": "int64", "description": "总数（分页时使用）" }
+        }
+      },
+      "ScrollResult": {
+        "type": "object",
+        "description": "滚动分页结果",
+        "properties": {
+          "list": { "type": "array", "items": {}, "description": "数据列表" },
+          "minTime": { "type": "integer", "format": "int64", "description": "本次最小时间戳" },
+          "offset": { "type": "integer", "description": "偏移量（同时间戳下的重复条目数）" }
+        }
+      },
+      "Shop": {
+        "type": "object",
+        "description": "商铺信息",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "name": { "type": "string", "description": "商铺名称" },
+          "typeId": { "type": "integer", "format": "int64", "description": "商铺类型 ID" },
+          "images": { "type": "string", "description": "商铺图片，多个以逗号分隔" },
+          "area": { "type": "string", "description": "商圈，如“春熙路”" },
+          "address": { "type": "string", "description": "详细地址" },
+          "longitude": { "type": "number", "format": "double", "description": "经度" },
+          "latitude": { "type": "number", "format": "double", "description": "纬度" },
+          "avgPrice": { "type": "integer", "format": "int64", "description": "人均价格（整数）" },
+          "sold": { "type": "integer", "description": "销量" },
+          "comments": { "type": "integer", "description": "评论数量" },
+          "score": { "type": "integer", "description": "评分（1~5 分，乘 10 保存，如 45=4.5 分）" },
+          "openHours": { "type": "string", "description": "营业时间，如“10:00-22:00”" },
+          "description": { "type": "string", "description": "店铺详细描述（RAG 检索核心素材）" },
+          "tags": { "type": "string", "description": "标签 JSON 数组，如 [\"停车方便\",\"有包厢\"]" },
+          "recommendedScenes": { "type": "string", "description": "推荐场景 JSON 数组" },
+          "distance": { "type": "number", "format": "double", "description": "距离（计算字段，非持久化）" },
+          "createTime": { "type": "string", "format": "date-time" },
+          "updateTime": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ShopType": {
+        "type": "object",
+        "description": "商铺类型（支持两级分类树）",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "name": { "type": "string", "description": "类型名称" },
+          "icon": { "type": "string", "description": "图标" },
+          "sort": { "type": "integer", "description": "排序权重" },
+          "parentId": { "type": "integer", "format": "int64", "description": "父分类 ID（可空）" }
+        }
+      },
+      "Blog": {
+        "type": "object",
+        "description": "探店笔记",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "shopId": { "type": "integer", "format": "int64", "description": "关联商铺 ID" },
+          "userId": { "type": "integer", "format": "int64", "description": "作者用户 ID" },
+          "icon": { "type": "string", "description": "用户头像（非持久化字段）" },
+          "name": { "type": "string", "description": "用户姓名（非持久化字段）" },
+          "isLike": { "type": "boolean", "description": "当前用户是否已点赞（非持久化字段）" },
+          "title": { "type": "string", "description": "笔记标题" },
+          "images": { "type": "string", "description": "照片，最多 9 张，逗号分隔" },
+          "content": { "type": "string", "description": "探店文字描述" },
+          "liked": { "type": "integer", "description": "点赞数量" },
+          "comments": { "type": "integer", "description": "评论数量" },
+          "createTime": { "type": "string", "format": "date-time" },
+          "updateTime": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Voucher": {
+        "type": "object",
+        "description": "优惠券",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "shopId": { "type": "integer", "format": "int64", "description": "关联商铺 ID" },
+          "title": { "type": "string", "description": "代金券标题" },
+          "subTitle": { "type": "string", "description": "副标题" },
+          "rules": { "type": "string", "description": "使用规则" },
+          "payValue": { "type": "integer", "format": "int64", "description": "支付金额（分）" },
+          "actualValue": { "type": "integer", "format": "int64", "description": "抵扣金额（分）" },
+          "type": { "type": "integer", "description": "类型：0=普通券, 1=秒杀券" },
+          "status": { "type": "integer", "description": "状态：1=上架, 2=下架, 3=过期" },
+          "stock": { "type": "integer", "description": "库存（非持久化字段，仅秒杀券）" },
+          "beginTime": { "type": "string", "format": "date-time", "description": "生效时间（非持久化字段）" },
+          "endTime": { "type": "string", "format": "date-time", "description": "失效时间（非持久化字段）" },
+          "createTime": { "type": "string", "format": "date-time" },
+          "updateTime": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SeckillVoucherFullModel": {
+        "type": "object",
+        "description": "秒杀券完整信息",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "voucherId": { "type": "integer", "format": "int64", "description": "关联券 ID" },
+          "initStock": { "type": "integer", "description": "初始库存" },
+          "stock": { "type": "integer", "description": "当前库存" },
+          "allowedLevels": { "type": "string", "description": "允许参与的会员等级，逗号分隔" },
+          "minLevel": { "type": "integer", "description": "最低会员等级" },
+          "beginTime": { "type": "string", "format": "date-time" },
+          "endTime": { "type": "string", "format": "date-time" },
+          "status": { "type": "integer" },
+          "shopId": { "type": "integer", "format": "int64" },
+          "createTime": { "type": "string", "format": "date-time" }
+        }
+      },
+      "UserDTO": {
+        "type": "object",
+        "description": "用户基本信息",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "nickName": { "type": "string", "description": "昵称" },
+          "icon": { "type": "string", "description": "头像" }
+        }
+      },
+      "UserInfo": {
+        "type": "object",
+        "description": "用户详细信息",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "userId": { "type": "integer", "format": "int64", "description": "用户 ID" },
+          "city": { "type": "string", "description": "城市" },
+          "introduce": { "type": "string", "description": "个人介绍", "maxLength": 128 },
+          "fans": { "type": "integer", "description": "粉丝数量" },
+          "followee": { "type": "integer", "description": "关注数" },
+          "gender": { "type": "boolean", "description": "性别：false=男, true=女" },
+          "birthday": { "type": "string", "format": "date" },
+          "credits": { "type": "integer", "description": "积分" },
+          "level": { "type": "integer", "description": "会员级别：0~9" }
+        }
+      },
+      "VoucherOrder": {
+        "type": "object",
+        "description": "优惠券订单",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "userId": { "type": "integer", "format": "int64" },
+          "voucherId": { "type": "integer", "format": "int64" },
+          "payType": { "type": "integer" },
+          "status": { "type": "integer", "description": "订单状态" },
+          "reconciliationStatus": { "type": "integer", "description": "对账状态" },
+          "quantity": { "type": "integer", "description": "购买数量" },
+          "payAmount": { "type": "integer", "format": "int64", "description": "实付金额（分）" },
+          "createTime": { "type": "string", "format": "date-time" },
+          "payTime": { "type": "string", "format": "date-time" },
+          "useTime": { "type": "string", "format": "date-time" },
+          "refundTime": { "type": "string", "format": "date-time" },
+          "updateTime": { "type": "string", "format": "date-time" }
+        }
+      },
+      "LoginFormDTO": {
+        "type": "object",
+        "required": ["phone"],
+        "properties": {
+          "phone": { "type": "string", "description": "手机号码" },
+          "code": { "type": "string", "description": "短信验证码（验证码登录时使用）" },
+          "password": { "type": "string", "description": "密码（密码登录时使用）" }
+        },
+        "example": { "phone": "13800138000", "code": "123456" }
+      },
+      "ChatRequestDTO": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "session_id": { "type": "string", "description": "会话 ID（用于多轮对话）" },
+          "user_id": { "type": "integer", "format": "int64", "description": "用户 ID" },
+          "query": { "type": "string", "description": "用户问题" },
+          "longitude": { "type": "number", "format": "double", "description": "用户经度" },
+          "latitude": { "type": "number", "format": "double", "description": "用户纬度" }
+        },
+        "example": {
+          "session_id": "sess_abc123",
+          "user_id": 1,
+          "query": "推荐附近好吃的火锅店",
+          "longitude": 104.0657,
+          "latitude": 30.6574
+        }
+      },
+      "VoucherAvailableRequestDTO": {
+        "type": "object",
+        "required": ["shopIds"],
+        "properties": {
+          "shopIds": { "type": "array", "items": { "type": "integer", "format": "int64" }, "description": "商铺 ID 列表" },
+          "userId": { "type": "integer", "format": "int64", "description": "用户 ID（内部调用时传入）" }
+        },
+        "example": { "shopIds": [1, 2, 3], "userId": 1 }
+      },
+      "SeckillVoucherDto": {
+        "type": "object",
+        "required": ["shopId", "title", "subTitle", "payValue", "actualValue", "type", "status", "stock", "beginTime", "endTime"],
+        "properties": {
+          "shopId": { "type": "integer", "format": "int64", "description": "商铺 ID" },
+          "title": { "type": "string", "description": "券标题" },
+          "subTitle": { "type": "string", "description": "副标题" },
+          "rules": { "type": "string", "description": "使用规则" },
+          "payValue": { "type": "integer", "format": "int64", "description": "支付金额（分）" },
+          "actualValue": { "type": "integer", "format": "int64", "description": "抵扣金额（分）" },
+          "type": { "type": "integer", "description": "类型：0=普通券, 1=秒杀券" },
+          "status": { "type": "integer", "description": "状态：1=上架, 2=下架, 3=过期" },
+          "stock": { "type": "integer", "description": "初始库存" },
+          "beginTime": { "type": "string", "format": "date-time", "description": "生效时间" },
+          "endTime": { "type": "string", "format": "date-time", "description": "失效时间" },
+          "allowedLevels": { "type": "string", "description": "允许参与的会员等级，逗号分隔" },
+          "minLevel": { "type": "integer", "description": "最低会员等级" }
+        },
+        "example": {
+          "shopId": 1,
+          "title": "50 元代金券",
+          "subTitle": "满 200 可用",
+          "payValue": 15000,
+          "actualValue": 5000,
+          "type": 1,
+          "status": 1,
+          "stock": 100,
+          "beginTime": "2026-07-08 10:00:00",
+          "endTime": "2026-07-15 22:00:00",
+          "minLevel": 1
+        }
+      },
+      "UpdateSeckillVoucherDto": {
+        "type": "object",
+        "required": ["voucherId"],
+        "properties": {
+          "voucherId": { "type": "integer", "format": "int64" },
+          "title": { "type": "string" },
+          "subTitle": { "type": "string" },
+          "rules": { "type": "string" },
+          "payValue": { "type": "integer", "format": "int64" },
+          "actualValue": { "type": "integer", "format": "int64" },
+          "type": { "type": "integer" },
+          "status": { "type": "integer" },
+          "beginTime": { "type": "string", "format": "date-time" },
+          "endTime": { "type": "string", "format": "date-time" },
+          "allowedLevels": { "type": "string" },
+          "minLevel": { "type": "integer" },
+          "allowedCities": { "type": "string", "description": "允许参与的城市，逗号分隔" }
+        },
+        "example": { "voucherId": 1, "status": 2 }
+      },
+      "UpdateSeckillVoucherStockDto": {
+        "type": "object",
+        "required": ["voucherId", "initStock"],
+        "properties": {
+          "voucherId": { "type": "integer", "format": "int64", "description": "秒杀券 ID" },
+          "initStock": { "type": "integer", "minimum": 1, "description": "新初始库存" }
+        },
+        "example": { "voucherId": 1, "initStock": 200 }
+      },
+      "VoucherDto": {
+        "type": "object",
+        "required": ["shopId", "title", "subTitle", "rules", "payValue", "actualValue", "type", "status"],
+        "properties": {
+          "shopId": { "type": "integer", "format": "int64" },
+          "title": { "type": "string" },
+          "subTitle": { "type": "string" },
+          "rules": { "type": "string" },
+          "payValue": { "type": "integer", "format": "int64" },
+          "actualValue": { "type": "integer", "format": "int64" },
+          "type": { "type": "integer", "description": "类型：0=普通券, 1=秒杀券" },
+          "status": { "type": "integer", "description": "状态：1=上架, 2=下架, 3=过期" }
+        },
+        "example": {
+          "shopId": 1,
+          "title": "30 元代金券",
+          "subTitle": "全场通用",
+          "rules": "每桌限用一张，不可与其他优惠同享",
+          "payValue": 7000,
+          "actualValue": 3000,
+          "type": 0,
+          "status": 1
+        }
+      },
+      "GetSeckillVoucherDto": {
+        "type": "object",
+        "required": ["voucherId"],
+        "properties": {
+          "voucherId": { "type": "integer", "format": "int64" }
+        }
+      },
+      "GetVoucherOrderDto": {
+        "type": "object",
+        "required": ["orderId"],
+        "properties": {
+          "orderId": { "type": "integer", "format": "int64" }
+        }
+      },
+      "GetVoucherOrderByVoucherIdDto": {
+        "type": "object",
+        "required": ["voucherId"],
+        "properties": {
+          "voucherId": { "type": "integer", "format": "int64" }
+        }
+      },
+      "CancelVoucherOrderDto": {
+        "type": "object",
+        "required": ["voucherId"],
+        "properties": {
+          "voucherId": { "type": "integer", "format": "int64", "description": "优惠券 ID" }
+        }
+      },
+      "VoucherSubscribeDto": {
+        "type": "object",
+        "required": ["voucherId"],
+        "properties": {
+          "voucherId": { "type": "integer", "format": "int64", "description": "优惠券 ID" }
+        },
+        "example": { "voucherId": 1 }
+      },
+      "VoucherSubscribeBatchDto": {
+        "type": "object",
+        "required": ["voucherIdList"],
+        "properties": {
+          "voucherIdList": { "type": "array", "items": { "type": "integer", "format": "int64" }, "description": "优惠券 ID 列表" }
+        },
+        "example": { "voucherIdList": [1, 2, 3] }
+      },
+      "DelayVoucherReminderDto": {
+        "type": "object",
+        "required": ["voucherId", "delaySeconds"],
+        "properties": {
+          "voucherId": { "type": "integer", "format": "int64", "description": "优惠券 ID" },
+          "delaySeconds": { "type": "integer", "description": "延迟时间（秒）" }
+        },
+        "example": { "voucherId": 1, "delaySeconds": 3600 }
+      },
+      "GetSubscribeStatusVo": {
+        "type": "object",
+        "description": "优惠券订阅状态",
+        "properties": {
+          "voucherId": { "type": "integer", "format": "int64", "description": "优惠券 ID" },
+          "subscribeStatus": { "type": "integer", "enum": [0, 1], "description": "1=已订阅, 0=未订阅" }
+        }
+      },
+      "ShopSyncDTO": {
+        "type": "object",
+        "description": "商铺同步数据（供 Python Agent 服务）",
+        "properties": {
+          "shopId": { "type": "integer", "format": "int64" },
+          "name": { "type": "string", "description": "商铺名称" },
+          "type": { "type": "string", "description": "一级类型名称" },
+          "subType": { "type": "string", "description": "二级类型名称" },
+          "area": { "type": "string", "description": "商圈" },
+          "address": { "type": "string", "description": "地址" },
+          "longitude": { "type": "number", "format": "double" },
+          "latitude": { "type": "number", "format": "double" },
+          "avgPrice": { "type": "integer", "format": "int64", "description": "人均价格" },
+          "score": { "type": "integer", "description": "评分（乘 10）" },
+          "openHours": { "type": "string", "description": "营业时间" },
+          "images": { "type": "string", "description": "图片 URL，逗号分隔" },
+          "imagesList": { "type": "array", "items": { "$ref": "#/components/schemas/ShopImageDTO" }, "description": "图片详情列表" },
+          "description": { "type": "string", "description": "店铺描述（RAG 检索核心文本）" },
+          "tags": { "type": "string", "description": "标签 JSON 数组" },
+          "recommendedScenes": { "type": "string", "description": "推荐场景 JSON 数组" },
+          "updateTime": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ShopImageDTO": {
+        "type": "object",
+        "description": "商铺图片",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "shopId": { "type": "integer", "format": "int64" },
+          "url": { "type": "string", "description": "图片 URL" },
+          "type": { "type": "string", "description": "图片类型（如 cover, interior, menu 等）" },
+          "alt": { "type": "string", "description": "替代文本" },
+          "sort": { "type": "integer", "description": "排序" }
+        }
+      },
+      "BlogSyncDTO": {
+        "type": "object",
+        "description": "博客同步数据（供 Python Agent 服务）",
+        "properties": {
+          "blogId": { "type": "integer", "format": "int64" },
+          "shopId": { "type": "integer", "format": "int64", "description": "关联商铺 ID" },
+          "userNickname": { "type": "string", "description": "作者昵称" },
+          "title": { "type": "string", "description": "笔记标题" },
+          "content": { "type": "string", "description": "笔记正文（RAG 检索核心文本）" },
+          "updateTime": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "securitySchemes": {
+      "sa-token": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "satoken",
+        "description": "sa-token 会话令牌（登录后获得）"
+      },
+      "InternalToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Internal-Token",
+        "description": "内部服务间调用认证令牌（配置值 SYNC_INTERNAL_TOKEN）"
+      }
+    }
+  }
+}

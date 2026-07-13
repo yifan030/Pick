@@ -1,4 +1,4 @@
-USE _0;
+USE Pick_0;
 
 -- ============================================================
 -- Broadcast Tables (replicated to all shards by ShardingSphere)

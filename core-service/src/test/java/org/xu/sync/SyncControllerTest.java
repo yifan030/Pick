@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.xu.dto.ShopSyncDTO;
 import org.xu.mapper.BlogMapper;
+import org.xu.mapper.ShopImageMapper;
 import org.xu.mapper.ShopMapper;
 import org.xu.service.IUserService;
 
@@ -31,6 +32,7 @@ class SyncControllerTest {
 
     private static final String VALID_TOKEN = "test-token";
     private ShopMapper shopMapper;
+    private ShopImageMapper shopImageMapper;
     private BlogMapper blogMapper;
     private IUserService userService;
     private MockMvc mockMvc;
@@ -39,9 +41,10 @@ class SyncControllerTest {
     @BeforeEach
     void setUp() {
         shopMapper = mock(ShopMapper.class);
+        shopImageMapper = mock(ShopImageMapper.class);
         blogMapper = mock(BlogMapper.class);
         userService = mock(IUserService.class);
-        var controller = new SyncController(shopMapper, blogMapper, userService);
+        var controller = new SyncController(shopMapper, shopImageMapper, blogMapper, userService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .addInterceptors(new InternalTokenInterceptor(VALID_TOKEN))
                 .build();
