@@ -22,6 +22,28 @@ from src.storage.models import (
 
 logger = logging.getLogger("pick.memory.pre_filter")
 
+# ── Event type → relevant profile types ─────────────────────────────────
+
+EVENT_TYPE_TO_PROFILE_TYPES: dict[str, list[str]] = {
+    "search":      ["CuisinePreference", "AreaPreference", "BudgetPreference"],
+    "purchase":    ["BudgetPreference", "CuisinePreference"],
+    "reservation": ["AreaPreference", "ScenePreference"],
+    "view":        ["CuisinePreference", "AreaPreference"],
+    "feedback":    [
+        "TastePreference", "BudgetPreference", "ConstraintPreference",
+        "CuisinePreference", "AreaPreference", "ScenePreference",
+    ],
+    "constraint":  ["ConstraintPreference"],
+    "dietary":     ["DietaryPreference"],
+}
+"""Maps behavioural event types to the Profile node types they can affect.
+
+Used by :class:`VectorPreFilter` to select which existing profiles are
+relevant for the current conversation turn — only profiles whose types
+match the event types in the turn are returned (plus hard constraints,
+which are always included).
+"""
+
 
 class VectorPreFilter:
     """Pre-filters existing profiles by relevance to the current conversation.
@@ -121,14 +143,19 @@ class VectorPreFilter:
                 result_ids.add(pid)
                 result.append(p)
 
-        # If we have event matches, include all relevant profiles.
-        # If no matches (cold start), return hard constraints only.
+        # Determine relevant profile types from current + historical events.
+        # When there are matching historical events, only return profiles
+        # whose types are relevant to the event types in play — plus hard
+        # constraints (always included).  When there are *no* matches
+        # (cold start), return hard constraints only.
         if event_ids:
+            relevant_types = self._get_relevant_profile_types(events, results)
             for p in all_profiles:
-                pid = self._profile_key(p)
-                if pid not in result_ids:
-                    result_ids.add(pid)
-                    result.append(p)
+                if p.node_type() in relevant_types:
+                    pid = self._profile_key(p)
+                    if pid not in result_ids:
+                        result_ids.add(pid)
+                        result.append(p)
 
         logger.debug(
             "Pre-filter: %d events -> %d matching event IDs -> %d profiles (%d hard)",
@@ -138,6 +165,37 @@ class VectorPreFilter:
             len(hard_constraints),
         )
         return result
+
+    def _get_relevant_profile_types(
+        self,
+        current_events: list[MemoryEvent],
+        matching_results: list[dict],
+    ) -> set[str]:
+        """Derive the set of relevant profile types from current and historical events.
+
+        Iterates over the event types in *current_events* and the event types
+        found in *matching_results* (historical Milvus events), maps each
+        type to a set of profile node type names via
+        :data:`EVENT_TYPE_TO_PROFILE_TYPES`, and returns the union.
+
+        Unknown event types are silently ignored (they map to the empty set).
+        """
+        relevant: set[str] = set()
+
+        # 1. Current turn events
+        for event in current_events:
+            mapped = EVENT_TYPE_TO_PROFILE_TYPES.get(event.event_type, [])
+            relevant.update(mapped)
+
+        # 2. Matching historical events
+        for result in matching_results:
+            entity = result.get("entity", {})
+            event_type = entity.get("event_type", "") or result.get("event_type", "")
+            if event_type:
+                mapped = EVENT_TYPE_TO_PROFILE_TYPES.get(event_type, [])
+                relevant.update(mapped)
+
+        return relevant
 
     @staticmethod
     def _profile_key(profile: AnyProfile) -> str:

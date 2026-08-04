@@ -20,6 +20,12 @@ EVENT_COMPRESSION_AGE_DAYS = 7
 SESSION_FULL_RETENTION_DAYS = 30
 SESSION_DEEMBED_DAYS = 90
 
+# ── Confidence decay ──────────────────────────────────────────────────
+
+DECAY_INTERVAL_DAYS = 30        # profiles not reinforced for 30 days start decaying
+DECAY_RATE = 0.1                # each decay cycle reduces confidence by 10% (×0.9)
+DECAY_MIN_CONFIDENCE = 0.3      # delete profiles whose confidence drops below this
+
 
 class CleanupJob:
     """Runs periodic cleanup: TTL expiry, event compression, session expiration."""
@@ -42,14 +48,15 @@ class CleanupJob:
                 if getattr(p, "is_hard", False) is True:
                     continue
                 logger.info("Profile expired: user=%s type=%s", user_id, p.node_type())
-                if p.element_id:
+                pid = getattr(p, "id", None)
+                if pid:
                     try:
-                        self._neo4j.delete_profile(p.element_id)
+                        self._neo4j.delete_profile(pid)
                         deleted += 1
                     except Exception:
-                        logger.exception("Failed to delete expired profile %s", p.element_id)
+                        logger.exception("Failed to delete expired profile %s", pid)
                 else:
-                    deleted += 1  # Counted but not deletable (no elementId)
+                    deleted += 1  # Counted but not deletable (no id)
         return deleted
 
     def cleanup_expired_events(self) -> int:
@@ -151,12 +158,100 @@ class CleanupJob:
             to_remove = plist_sorted[:len(plist_sorted) - limit]
             for p in to_remove:
                 logger.info("Anti-bloat: removing %s (confidence=%.2f)", nt, p.confidence)
-                if p.element_id:
+                pid = getattr(p, "id", None)
+                if pid:
                     try:
-                        self._neo4j.delete_profile(p.element_id)
+                        self._neo4j.delete_profile(pid)
                         removed += 1
                     except Exception:
-                        logger.exception("Failed to delete bloated profile %s", p.element_id)
+                        logger.exception("Failed to delete bloated profile %s", pid)
                 else:
-                    removed += 1  # Counted but not deletable (no elementId)
+                    removed += 1  # Counted but not deletable (no id)
         return removed
+
+    # ── Confidence decay ───────────────────────────────────────────────
+
+    def decay_stale_profiles(self, user_id: str) -> dict:
+        """Apply time-based confidence decay to profiles not reinforced recently.
+
+        Profiles whose last activity (``last_reinforced_at``, falling back to
+        ``updated_at``, then ``created_at``) is older than
+        :data:`DECAY_INTERVAL_DAYS` have their confidence multiplied by
+        ``(1 - DECAY_RATE)``.  Profiles that drop below
+        :data:`DECAY_MIN_CONFIDENCE` are deleted.
+
+        Hard constraints (``is_hard=True``) and profiles created less than
+        :data:`DECAY_INTERVAL_DAYS` ago are always skipped.
+
+        Returns a dict with keys ``decayed`` (count of profiles whose
+        confidence was lowered) and ``deleted`` (count deleted for dropping
+        below the minimum threshold).
+        """
+        now = int(time.time())
+        cutoff = now - DECAY_INTERVAL_DAYS * 86400
+
+        try:
+            profiles = self._neo4j.read_profiles(user_id)
+        except Exception:
+            logger.exception("Failed to read profiles for decay check")
+            return {"decayed": 0, "deleted": 0}
+
+        decayed = 0
+        deleted = 0
+
+        for p in profiles:
+            # Hard constraints never decay
+            if getattr(p, "is_hard", False) is True:
+                continue
+
+            # Determine last active timestamp
+            last_active = (
+                getattr(p, "last_reinforced_at", None)
+                or getattr(p, "updated_at", None)
+                or getattr(p, "created_at", 0)
+            )
+
+            # Skip profiles that are still within the observation window
+            if last_active is None or last_active >= cutoff:
+                continue
+
+            # Apply multiplicative decay
+            old_conf = p.confidence
+            new_conf = round(old_conf * (1.0 - DECAY_RATE), 4)
+
+            if new_conf < DECAY_MIN_CONFIDENCE:
+                # Confidence too low — delete the profile atom
+                logger.info(
+                    "Decay: deleting %s for user=%s (confidence %.2f → %.2f, below %.2f)",
+                    p.node_type(), user_id, old_conf, new_conf, DECAY_MIN_CONFIDENCE,
+                )
+                if getattr(p, "id", None):
+                    try:
+                        self._neo4j.delete_profile(p.id)
+                        deleted += 1
+                    except Exception:
+                        logger.exception("Failed to delete decayed profile %s", getattr(p, "id", "?"))
+                else:
+                    deleted += 1  # counted but not deletable (no elementId)
+            else:
+                # Update confidence in Neo4j
+                logger.debug(
+                    "Decay: %s for user=%s confidence %.2f → %.2f",
+                    p.node_type(), user_id, old_conf, new_conf,
+                )
+                if getattr(p, "id", None):
+                    try:
+                        self._neo4j.update_profile(p.id, {"confidence": new_conf})
+                        decayed += 1
+                    except Exception:
+                        logger.exception("Failed to update decayed profile %s", getattr(p, "id", "?"))
+                else:
+                    decayed += 1  # counted but not updatable (no elementId)
+
+        if decayed or deleted:
+            logger.info(
+                "Decay complete for user=%s: %d decayed, %d deleted",
+                user_id, decayed, deleted,
+            )
+
+        return {"decayed": decayed, "deleted": deleted}
