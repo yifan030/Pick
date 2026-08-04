@@ -6,12 +6,15 @@ Provides:
 - Dense vector search
 - Sparse (BM25) vector search
 - Delete by ID or filter
+
+Compatible with pymilvus >= 3.0 (CollectionSchema + FieldSchema API).
 """
 
 import logging
 import os
 import time as _time_module
-from pymilvus import MilvusClient, DataType
+from pymilvus import MilvusClient, DataType, FieldSchema, CollectionSchema
+from pymilvus.milvus_client.index import IndexParams
 
 logger = logging.getLogger("pick.storage.milvus")
 
@@ -38,83 +41,92 @@ HNSW_PARAMS = {"M": 16, "efConstruction": 200}
 # ── Collection Schemas ────────────────────────────────────────────────
 
 
-def _make_event_schema(dim: int) -> dict:
-    return {
-        "fields": [
-            {"name": "id", "dtype": DataType.VARCHAR, "is_primary": True, "max_length": 128},
-            {"name": "user_id", "dtype": DataType.VARCHAR, "max_length": 64},
-            {"name": "event_type", "dtype": DataType.VARCHAR, "max_length": 64},
-            {"name": "description", "dtype": DataType.VARCHAR, "max_length": 4096},
-            {"name": "payload", "dtype": DataType.VARCHAR, "max_length": 8192},
-            {"name": "embedding", "dtype": DataType.FLOAT_VECTOR, "dim": dim},
-            {"name": "sparse_embedding", "dtype": DataType.SPARSE_FLOAT_VECTOR},
-            {"name": "session_id", "dtype": DataType.VARCHAR, "max_length": 64},
-            {"name": "compressed", "dtype": DataType.BOOL},
-            {"name": "compressed_from", "dtype": DataType.VARCHAR, "max_length": 4096},
-            {"name": "ttl_seconds", "dtype": DataType.INT64},
-            {"name": "expires_at", "dtype": DataType.INT64},
-            {"name": "created_at", "dtype": DataType.INT64},
-        ],
-    }
+def _make_event_schema(dim: int) -> list[FieldSchema]:
+    return [
+        FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, max_length=128),
+        FieldSchema(name="user_id", dtype=DataType.VARCHAR, max_length=64),
+        FieldSchema(name="event_type", dtype=DataType.VARCHAR, max_length=64),
+        FieldSchema(name="description", dtype=DataType.VARCHAR, max_length=4096),
+        FieldSchema(name="payload", dtype=DataType.VARCHAR, max_length=8192),
+        FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=dim),
+        FieldSchema(name="sparse_embedding", dtype=DataType.SPARSE_FLOAT_VECTOR),
+        FieldSchema(name="session_id", dtype=DataType.VARCHAR, max_length=64),
+        FieldSchema(name="compressed", dtype=DataType.BOOL),
+        FieldSchema(name="compressed_from", dtype=DataType.VARCHAR, max_length=4096),
+        FieldSchema(name="ttl_seconds", dtype=DataType.INT64),
+        FieldSchema(name="expires_at", dtype=DataType.INT64),
+        FieldSchema(name="created_at", dtype=DataType.INT64),
+    ]
 
 
-def _make_session_schema(dim: int) -> dict:
-    return {
-        "fields": [
-            {"name": "id", "dtype": DataType.VARCHAR, "is_primary": True, "max_length": 128},
-            {"name": "user_id", "dtype": DataType.VARCHAR, "max_length": 64},
-            {"name": "summary", "dtype": DataType.VARCHAR, "max_length": 8192},
-            {"name": "embedding", "dtype": DataType.FLOAT_VECTOR, "dim": dim},
-            {"name": "sparse_embedding", "dtype": DataType.SPARSE_FLOAT_VECTOR},
-            {"name": "key_shops", "dtype": DataType.VARCHAR, "max_length": 4096},
-            {"name": "key_areas", "dtype": DataType.VARCHAR, "max_length": 2048},
-            {"name": "intent", "dtype": DataType.VARCHAR, "max_length": 64},
-            {"name": "is_complete", "dtype": DataType.BOOL},
-            {"name": "created_at", "dtype": DataType.INT64},
-            {"name": "updated_at", "dtype": DataType.INT64},
-        ],
-    }
+def _make_session_schema(dim: int) -> list[FieldSchema]:
+    return [
+        FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, max_length=128),
+        FieldSchema(name="user_id", dtype=DataType.VARCHAR, max_length=64),
+        FieldSchema(name="summary", dtype=DataType.VARCHAR, max_length=8192),
+        FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=dim),
+        FieldSchema(name="sparse_embedding", dtype=DataType.SPARSE_FLOAT_VECTOR),
+        FieldSchema(name="key_shops", dtype=DataType.VARCHAR, max_length=4096),
+        FieldSchema(name="key_areas", dtype=DataType.VARCHAR, max_length=2048),
+        FieldSchema(name="intent", dtype=DataType.VARCHAR, max_length=64),
+        FieldSchema(name="is_complete", dtype=DataType.BOOL),
+        FieldSchema(name="created_at", dtype=DataType.INT64),
+        FieldSchema(name="updated_at", dtype=DataType.INT64),
+    ]
 
 
-def _make_agent_case_schema(dim: int) -> dict:
-    return {
-        "fields": [
-            {"name": "id", "dtype": DataType.VARCHAR, "is_primary": True, "max_length": 128},
-            {"name": "user_id", "dtype": DataType.VARCHAR, "max_length": 64},
-            {"name": "case_type", "dtype": DataType.VARCHAR, "max_length": 64},
-            {"name": "description", "dtype": DataType.VARCHAR, "max_length": 4096},
-            {"name": "context", "dtype": DataType.VARCHAR, "max_length": 4096},
-            {"name": "action", "dtype": DataType.VARCHAR, "max_length": 2048},
-            {"name": "outcome", "dtype": DataType.VARCHAR, "max_length": 64},
-            {"name": "outcome_reason", "dtype": DataType.VARCHAR, "max_length": 2048},
-            {"name": "lesson", "dtype": DataType.VARCHAR, "max_length": 4096},
-            {"name": "embedding", "dtype": DataType.FLOAT_VECTOR, "dim": dim},
-            {"name": "sparse_embedding", "dtype": DataType.SPARSE_FLOAT_VECTOR},
-            {"name": "created_at", "dtype": DataType.INT64},
-            {"name": "ttl_seconds", "dtype": DataType.INT64},
-        ],
-    }
+def _make_agent_case_schema(dim: int) -> list[FieldSchema]:
+    return [
+        FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, max_length=128),
+        FieldSchema(name="user_id", dtype=DataType.VARCHAR, max_length=64),
+        FieldSchema(name="case_type", dtype=DataType.VARCHAR, max_length=64),
+        FieldSchema(name="description", dtype=DataType.VARCHAR, max_length=4096),
+        FieldSchema(name="context", dtype=DataType.VARCHAR, max_length=4096),
+        FieldSchema(name="action", dtype=DataType.VARCHAR, max_length=2048),
+        FieldSchema(name="outcome", dtype=DataType.VARCHAR, max_length=64),
+        FieldSchema(name="outcome_reason", dtype=DataType.VARCHAR, max_length=2048),
+        FieldSchema(name="lesson", dtype=DataType.VARCHAR, max_length=4096),
+        FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=dim),
+        FieldSchema(name="sparse_embedding", dtype=DataType.SPARSE_FLOAT_VECTOR),
+        FieldSchema(name="created_at", dtype=DataType.INT64),
+        FieldSchema(name="ttl_seconds", dtype=DataType.INT64),
+    ]
 
 
 # ── Index Definitions ─────────────────────────────────────────────────
 
 
-def _dense_index_params() -> dict:
-    return {
-        "field_name": "embedding",
-        "index_type": "HNSW",
-        "metric_type": "COSINE",
-        "params": HNSW_PARAMS,
-    }
+def _build_index_params(client: MilvusClient) -> IndexParams:
+    """Build a combined IndexParams with both dense HNSW and sparse
+    inverted index definitions."""
+    index_params = client.prepare_index_params()
+    # Dense HNSW index
+    index_params.add_index(
+        field_name="embedding",
+        index_type="HNSW",
+        metric_type="COSINE",
+        params=HNSW_PARAMS,
+    )
+    # Sparse inverted index
+    index_params.add_index(
+        field_name="sparse_embedding",
+        index_type="SPARSE_INVERTED_INDEX",
+        metric_type="IP",  # Inner Product for sparse
+        params={"drop_ratio_build": 0.2},
+    )
+    return index_params
 
 
-def _sparse_index_params() -> dict:
-    return {
-        "field_name": "sparse_embedding",
-        "index_type": "SPARSE_INVERTED_INDEX",
-        "metric_type": "IP",  # Inner Product for sparse
-        "params": {"drop_ratio_build": 0.2},
-    }
+def _build_product_index_params(client: MilvusClient) -> IndexParams:
+    """Build IndexParams for product RAG collections (dense HNSW only)."""
+    index_params = client.prepare_index_params()
+    index_params.add_index(
+        field_name="embedding",
+        index_type="HNSW",
+        metric_type="COSINE",
+        params=HNSW_PARAMS,
+    )
+    return index_params
 
 
 # ── Store Class ───────────────────────────────────────────────────────
@@ -152,26 +164,25 @@ class MilvusMemoryStore:
             COLLECTION_AGENT_CASE: _make_agent_case_schema(self._dim),
         }
         created = []
-        for name, schema in schemas.items():
+        for name, fields in schemas.items():
             if self.client.has_collection(name):
                 logger.info("Collection %s already exists", name)
                 created.append(name)
                 continue
-            self.client.create_collection(
-                collection_name=name,
-                schema=schema["fields"],
-                # Enable dynamic schema for future field additions
+            # Build CollectionSchema with pymilvus >= 3.0 API
+            collection_schema = CollectionSchema(
+                fields=fields,
                 enable_dynamic_field=True,
             )
-            # Create dense HNSW index
-            self.client.create_index(
+            self.client.create_collection(
                 collection_name=name,
-                index_params=_dense_index_params(),
+                schema=collection_schema,
             )
-            # Create sparse inverted index
+            # Create both dense HNSW + sparse inverted indexes
+            index_params = _build_index_params(self.client)
             self.client.create_index(
                 collection_name=name,
-                index_params=_sparse_index_params(),
+                index_params=index_params,
             )
             self.client.load_collection(name)
             logger.info("Created collection %s with HNSW + sparse indexes", name)
@@ -294,13 +305,15 @@ class MilvusMemoryStore:
             if self.client.has_collection(name):
                 created.append(name)
                 continue
+            collection_schema = CollectionSchema(fields=fields)
             self.client.create_collection(
                 collection_name=name,
-                schema=fields,
+                schema=collection_schema,
             )
+            index_params = _build_product_index_params(self.client)
             self.client.create_index(
                 collection_name=name,
-                index_params=_dense_index_params(),
+                index_params=index_params,
             )
             self.client.load_collection(name)
             logger.info("Created product collection %s", name)
@@ -322,31 +335,31 @@ class MilvusMemoryStore:
 # ── Product Collection Schemas ────────────────────────────────────────
 
 
-def _make_shop_desc_schema(dim: int) -> list[dict]:
+def _make_shop_desc_schema(dim: int) -> list[FieldSchema]:
     """Schema for collection_shop_desc (product RAG)."""
     return [
-        {"name": "id", "dtype": DataType.VARCHAR, "is_primary": True, "max_length": 128},
-        {"name": "embedding", "dtype": DataType.FLOAT_VECTOR, "dim": dim},
-        {"name": "shop_id", "dtype": DataType.INT64},
-        {"name": "area", "dtype": DataType.VARCHAR, "max_length": 256},
-        {"name": "longitude", "dtype": DataType.DOUBLE},
-        {"name": "latitude", "dtype": DataType.DOUBLE},
-        {"name": "avg_price", "dtype": DataType.INT64},
-        {"name": "type", "dtype": DataType.VARCHAR, "max_length": 128},
-        {"name": "sub_type", "dtype": DataType.VARCHAR, "max_length": 128},
-        {"name": "score", "dtype": DataType.DOUBLE},
-        {"name": "open_hours", "dtype": DataType.VARCHAR, "max_length": 512},
-        {"name": "tags", "dtype": DataType.VARCHAR, "max_length": 2048},
-        {"name": "content_type", "dtype": DataType.VARCHAR, "max_length": 64},
+        FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, max_length=128),
+        FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=dim),
+        FieldSchema(name="shop_id", dtype=DataType.INT64),
+        FieldSchema(name="area", dtype=DataType.VARCHAR, max_length=256),
+        FieldSchema(name="longitude", dtype=DataType.DOUBLE),
+        FieldSchema(name="latitude", dtype=DataType.DOUBLE),
+        FieldSchema(name="avg_price", dtype=DataType.INT64),
+        FieldSchema(name="type", dtype=DataType.VARCHAR, max_length=128),
+        FieldSchema(name="sub_type", dtype=DataType.VARCHAR, max_length=128),
+        FieldSchema(name="score", dtype=DataType.DOUBLE),
+        FieldSchema(name="open_hours", dtype=DataType.VARCHAR, max_length=512),
+        FieldSchema(name="tags", dtype=DataType.VARCHAR, max_length=2048),
+        FieldSchema(name="content_type", dtype=DataType.VARCHAR, max_length=64),
     ]
 
 
-def _make_user_note_schema(dim: int) -> list[dict]:
+def _make_user_note_schema(dim: int) -> list[FieldSchema]:
     """Schema for collection_user_note (user blog notes RAG)."""
     return [
-        {"name": "id", "dtype": DataType.VARCHAR, "is_primary": True, "max_length": 128},
-        {"name": "embedding", "dtype": DataType.FLOAT_VECTOR, "dim": dim},
-        {"name": "shop_id", "dtype": DataType.INT64},
-        {"name": "user_nickname", "dtype": DataType.VARCHAR, "max_length": 256},
-        {"name": "content_type", "dtype": DataType.VARCHAR, "max_length": 64},
+        FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, max_length=128),
+        FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=dim),
+        FieldSchema(name="shop_id", dtype=DataType.INT64),
+        FieldSchema(name="user_nickname", dtype=DataType.VARCHAR, max_length=256),
+        FieldSchema(name="content_type", dtype=DataType.VARCHAR, max_length=64),
     ]
